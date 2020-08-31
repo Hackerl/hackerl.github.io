@@ -15,7 +15,7 @@
 <meta property="og:description" content="原理JVM提供动态attach机制, 支持动态注入jar包. 12345678910111213141516171819202122232425262728293031package com.security.smith;import com.sun.tools.attach.AgentInitializationException;import com.sun.tools.attach.Agen">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2020-08-31T10:14:36.000Z">
-<meta property="article:modified_time" content="2020-08-31T10:21:34.295Z">
+<meta property="article:modified_time" content="2020-08-31T10:26:01.766Z">
 <meta property="article:author" content="hackerl">
 <meta name="twitter:card" content="summary">
   
@@ -138,7 +138,7 @@
 <h2 id="设计"><a href="#设计" class="headerlink" title="设计"></a>设计</h2><p>根据上面分析, 要将函数调用的参数信息传出, 只需要在每个函数的开头插入一段字节码, 但是字节码需要动态生成. 没有一段字节码能够搞定所有函数, 因为每个函数的参数个数以及类型都不同. 所以Hook还是需要我们设定好函数的参数类型以及签名.<br>例如针对Runtime.exe(String), 我们设定函数信息:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java&#x2F;lang&#x2F;Runtime VIRTUAL_METHOD_TYPE exec &#123;&quot;string&quot;&#125;</span><br></pre></td></tr></table></figure>
 <p>那么在对Class进行拦截时, 我们可以根据上面的设定Hook函数, 根据VIRTUAL_METHOD_TYPE我们知道exec的参数从寄存器1开始, 根据{“string”}我们知道参数有1个, 并且是string类型, 这时候我们只需要插入一段字节码在exec的开头:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 获取单例类</span><br><span class="line">ALOAD 1</span><br><span class="line">INVOKESTATIC com&#x2F;security&#x2F;smith&#x2F;SmithProbe.trace (Ljava&#x2F;lang&#x2F;String;)V</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 获取参数</span><br><span class="line">ALOAD 1</span><br><span class="line">INVOKESTATIC com&#x2F;security&#x2F;smith&#x2F;SmithProbe.trace (Ljava&#x2F;lang&#x2F;String;)V</span><br></pre></td></tr></table></figure>
 <p>两个字节码就可以获取函数调用信息, 第一行将参数推入栈, 第二行调用我们编写好的方法:</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">trace</span><span class="params">(String arg)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>以上只是一个简单的例子, trace方法我们不能简单的写定参数, 因为每个Hook的函数传进来的参数都不一样. 所以我会在Hook时, 将目标函数的参数推入Object[], 然后传到trace里面来. 另外需要标识是什么类的什么方法调用的trace, 可以在生成字节码时, 给每个调用分配一个id.</p>
