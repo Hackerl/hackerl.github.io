@@ -15,7 +15,7 @@
 <meta property="og:description" content="原理JVM提供动态attach机制, 支持动态注入jar包. 12345678910111213141516171819202122232425262728293031package com.security.smith;import com.sun.tools.attach.AgentInitializationException;import com.sun.tools.attach.Agen">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2020-08-31T10:14:36.000Z">
-<meta property="article:modified_time" content="2020-08-31T10:26:01.766Z">
+<meta property="article:modified_time" content="2020-09-01T03:22:55.117Z">
 <meta property="article:author" content="hackerl">
 <meta name="twitter:card" content="summary">
   
@@ -121,7 +121,7 @@
 </li>
 </ul>
 </li>
-<li>Java Agent的功能是通过JVMTI Agent（C Agent）, JVMTI是一个事件驱动的工具实现接口<ul>
+<li>Java Agent的功能是通过JVMTI Agent(C Agent), JVMTI是一个事件驱动的工具实现接口<ul>
 <li>通常会在C Agent加载后的方法入口Agent_OnLoad处注册各种事件的钩子方法</li>
 <li>当JVM触发这些事件时, 便会调用对应的钩子方法</li>
 <li>例如可以为JVMTI中的ClassFileLoadHook事件设置钩子, 从而在C层面拦截所有的类加载事件</li>

@@ -119,7 +119,7 @@
 </li>
 </ul>
 </li>
-<li>Java Agent的功能是通过JVMTI Agent（C Agent）, JVMTI是一个事件驱动的工具实现接口<ul>
+<li>Java Agent的功能是通过JVMTI Agent(C Agent), JVMTI是一个事件驱动的工具实现接口<ul>
 <li>通常会在C Agent加载后的方法入口Agent_OnLoad处注册各种事件的钩子方法</li>
 <li>当JVM触发这些事件时, 便会调用对应的钩子方法</li>
 <li>例如可以为JVMTI中的ClassFileLoadHook事件设置钩子, 从而在C层面拦截所有的类加载事件</li>
