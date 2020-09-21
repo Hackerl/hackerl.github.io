@@ -64,6 +64,57 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-软路由折腾记录三" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" class="article-date">
+  <time datetime="2020-09-21T02:39:35.000Z" itemprop="datePublished">2020-09-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/">软路由折腾记录三</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="ADGuard"><a href="#ADGuard" class="headerlink" title="ADGuard"></a>ADGuard</h2><p>在路由器层面进行广告过滤, 并没有特别有效的方法, 到目前为止最有效的依旧是浏览器插件. 因为广告过滤的核心是拦截js/图片, 路由器上的透明代理很难窥视HTTPS传输的内容, 所以目前的路由器插件仅能对HTTP进行过滤. ADGuard Home另辟蹊径, 它提供DNS服务, 对黑名单里的广告域名进行拦截, 返回一个无法访问的IP.</p>
+<h3 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h3><p>由于clash提供了DNS服务, 所以需要调整ADGuard/clash的上下游顺序.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dnsmasq -&gt; ADGuard -&gt; clash</span><br></pre></td></tr></table></figure>
+<p>首先启动ADGuard:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run --name adguardhome -v /my/own/workdir:/opt/adguardhome/work -v /my/own/confdir:/opt/adguardhome/conf -p 5301:53/tcp -p 5301:53/udp -p 3000:3000/tcp -d adguard/adguardhome</span><br></pre></td></tr></table></figure>
+<p>ADGuard的DNS服务监听5031端口, 而clash监听5300端口. 首先编辑dnsmasq配置文件, 设置上游服务器为ADGuard:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">server=127.0.0.1#5301</span><br></pre></td></tr></table></figure>
+<p>接着访问软路由3000端口, 这是ADGuard提供的web界面, 在里面配置上游DNS为5300. 接下来就可以自有配置过滤规则, 配置完后可以执行命令验证广告域名是否被屏蔽:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig ad.xxx.xxx</span><br></pre></td></tr></table></figure>
+<h3 id="效果"><a href="#效果" class="headerlink" title="效果"></a>效果</h3><p>由于广告推送技术的发展, 现在光屏蔽域名还远远不够. 实测效果来看, 国内各大视频网站的广告均无法过滤, 而类似于谷歌联盟的图片广告可以屏蔽. 另外ADGuard不仅仅用于广告过滤, 还能屏蔽一些统计js, 针对斗鱼/虎牙等还能屏蔽p2p通信, 这些都需要在web界面里勾选一些开源规则.<br>但需要注意, 屏蔽某些域名可能导致网站体验不佳, 例如禁用p2p后斗鱼/虎牙会偶尔卡顿.</p>
+<h2 id="ipset"><a href="#ipset" class="headerlink" title="ipset"></a>ipset</h2><p>在使用了tproxy透明代理UDP流量后, 所有TCP/UDP流量均由clash处理, 包括与大陆ip的通信. 由于UDP转发本身比较耗费CPU, 所以我考虑能不能让大陆ip直接在iptables层放行, 只有国外ip的流量会通过clash.<br>ipset是iptables提供的工具, 你可以给一组ip取一个名称, 然后在iptables规则中检测目标ip是否属于该组. 所以我们只需要把大陆的ip网段添加到一个组中, 取名为”china”, 接着新建规则, 如果ip属于”china”则不进行透明代理.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">wget http://www.ipdeny.com/ipblocks/data/countries/cn.zone</span><br><span class="line"></span><br><span class="line">ipset -N china hash:net</span><br><span class="line">for i in $(cat ./cn.zone ); do</span><br><span class="line">    ipset -A china $i;</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+<p>接着在iptables相应的表中添加规则:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t mangle -A CLASH -p udp -m set --match-set china dst -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -p tcp -m set --match-set china dst -j RETURN</span><br></pre></td></tr></table></figure>
+<p>配置完成后, 只有国外ip的访问会经过clash, 而大陆ip的访问由iptables直接转发.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" data-id="ckfbx92q80000bnoa43wz4v5x" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-软路由折腾记录二" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/" class="article-date">
@@ -138,6 +189,8 @@
 <p>执行查询后, 我发现dnsmasq接收到了报文, 只是它似乎获取了网卡名称bro与enp0s8, 应该是它进行了网卡校验, 认为请求不应该由enp0s8流入, 所以没有进行回应.</p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>为了不影响Docker的正常使用, 我没有将所有Link Layer流量进行重定向, 放行了一些常见内网IP网段.<br>所以我最后的ebtables/iptables配置如下:</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> tcp</span></span><br><span class="line">iptables -t nat -N CLASH</span><br><span class="line">iptables -t nat -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -p tcp -j REDIRECT --to-ports 7892</span><br><span class="line">iptables -t nat -A PREROUTING -p tcp -j CLASH</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> udp</span></span><br><span class="line">ip rule add fwmark 0x162 table 0x162</span><br><span class="line">ip route add local 0.0.0.0/0 dev lo table 0x162</span><br><span class="line">iptables -t mangle -N CLASH</span><br><span class="line">iptables -t mangle -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -p udp -j TPROXY --on-port 7892 --tproxy-mark 0x162</span><br><span class="line">iptables -t mangle -A PREROUTING -p udp -j CLASH</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> +号代表通配符</span></span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 127.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 10.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 169.254.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 192.168.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 224.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 240.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 172.16.0.0/12 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 255.255.255.255 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp -j redirect --redirect-target DROP</span><br></pre></td></tr></table></figure>
+<p>有一点需要注意, 如果桥接的各网卡名称前缀相同, 可以使用”-i prefix+”进行匹配, 而不用针对每个网卡创建一条规则.</p>
+
       
     </div>
     <footer class="article-footer">
@@ -509,6 +562,10 @@
       <ul>
         
           <li>
+            <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/">软路由折腾记录三</a>
+          </li>
+        
+          <li>
             <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/">软路由折腾记录二</a>
           </li>
         
@@ -522,10 +579,6 @@
         
           <li>
             <a href="/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/">搭建OpenWrt软路由</a>
-          </li>
-        
-          <li>
-            <a href="/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/">Nginx反向代理SNI问题溯源</a>
           </li>
         
       </ul>

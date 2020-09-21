@@ -16,7 +16,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://i.imgur.com/COQcWrd.jpg">
 <meta property="article:published_time" content="2020-09-11T14:54:03.000Z">
-<meta property="article:modified_time" content="2020-09-11T14:54:27.170Z">
+<meta property="article:modified_time" content="2020-09-21T02:51:56.376Z">
 <meta property="article:author" content="hackerl">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://i.imgur.com/COQcWrd.jpg">
@@ -142,6 +142,8 @@
 <p>执行查询后, 我发现dnsmasq接收到了报文, 只是它似乎获取了网卡名称bro与enp0s8, 应该是它进行了网卡校验, 认为请求不应该由enp0s8流入, 所以没有进行回应.</p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>为了不影响Docker的正常使用, 我没有将所有Link Layer流量进行重定向, 放行了一些常见内网IP网段.<br>所以我最后的ebtables/iptables配置如下:</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> tcp</span></span><br><span class="line">iptables -t nat -N CLASH</span><br><span class="line">iptables -t nat -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -p tcp -j REDIRECT --to-ports 7892</span><br><span class="line">iptables -t nat -A PREROUTING -p tcp -j CLASH</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> udp</span></span><br><span class="line">ip rule add fwmark 0x162 table 0x162</span><br><span class="line">ip route add local 0.0.0.0/0 dev lo table 0x162</span><br><span class="line">iptables -t mangle -N CLASH</span><br><span class="line">iptables -t mangle -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -p udp -j TPROXY --on-port 7892 --tproxy-mark 0x162</span><br><span class="line">iptables -t mangle -A PREROUTING -p udp -j CLASH</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> +号代表通配符</span></span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 127.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 10.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 169.254.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 192.168.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 224.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 240.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 172.16.0.0/12 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp --ip-destination 255.255.255.255 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -i enp+ -p ipv4 --ip-proto udp -j redirect --redirect-target DROP</span><br></pre></td></tr></table></figure>
+<p>有一点需要注意, 如果桥接的各网卡名称前缀相同, 可以使用”-i prefix+”进行匹配, 而不用针对每个网卡创建一条规则.</p>
+
       
     </div>
     <footer class="article-footer">
@@ -153,6 +155,15 @@
   
     
 <nav id="article-nav">
+  
+    <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          软路由折腾记录三
+        
+      </div>
+    </a>
   
   
     <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/" id="article-nav-older" class="article-nav-link-wrap">
@@ -194,6 +205,10 @@
       <ul>
         
           <li>
+            <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/">软路由折腾记录三</a>
+          </li>
+        
+          <li>
             <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/">软路由折腾记录二</a>
           </li>
         
@@ -207,10 +222,6 @@
         
           <li>
             <a href="/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/">搭建OpenWrt软路由</a>
-          </li>
-        
-          <li>
-            <a href="/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/">Nginx反向代理SNI问题溯源</a>
           </li>
         
       </ul>
