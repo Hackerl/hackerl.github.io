@@ -15,7 +15,7 @@
 <meta property="og:description" content="前言将代码注入到特定进程空间内执行，是一种十分geek的行为，可用于破解、安全防护等。不像Windows有CreateRemoteThread可以直接在目标进程内创建线程，在Linux下进行进程注入会显得复杂些。目前比较常用的手段，就是计算dlopen函数在libc.so中的位置，然后利用ptrace连接目标进程，更改PC地址使其运行该函数，但是该方式只能针对非静态编译的程序。 mandibule">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2021-02-11T11:54:40.000Z">
-<meta property="article:modified_time" content="2021-02-11T11:56:00.819Z">
+<meta property="article:modified_time" content="2021-02-12T02:44:07.697Z">
 <meta property="article:author" content="hackerl">
 <meta name="twitter:card" content="summary">
   
@@ -111,7 +111,7 @@
 <li>没有将shellcode与ptrace注入剥离，导致耦合严重</li>
 <li>项目不使用C标准库，进行二次开发较为麻烦</li>
 </ul>
-<p>另外我在使用中发现了许多的bug，可见项目<a target="_blank" rel="noopener" href="https://github.com/ixty/mandibule/issues">issue</a>，另外我在推特上联系了作者，但他并没有要接着进行维护的意思。</p>
+<p>另外我在使用中发现了许多的bug，可见项目<a target="_blank" rel="noopener" href="https://github.com/ixty/mandibule/issues">issue</a>，我在推特上联系了作者，但他并没有要接着进行维护的意思。</p>
 <h2 id="pangolin"><a href="#pangolin" class="headerlink" title="pangolin"></a>pangolin</h2><p>最后我决定对项目进行重构，将ELF loader编写成独立的shellcode模块，而ptrace注入部分完全可以用熟悉的C++开发。具体的代码细节不赘述，可以自行在github上查看<a target="_blank" rel="noopener" href="https://github.com/Hackerl/pangolin">项目</a>。</p>
 <h3 id="链接脚本"><a href="#链接脚本" class="headerlink" title="链接脚本"></a>链接脚本</h3><p>在我的设计中，将shellcode部分编译成独立的so文件，然后根据导出符号的地址获取所有shellcode数据，将其写入目标进程中运行。但是在实现中遇到了问题，因为代码编译后不仅仅只有代码段，还包括RODATA等数据段，我们需要将所有数据都包括进来，而导出符号只会出现在TEXT中。<br>我知道在链接阶段可以指定所有符号的地址，让编译器根据我们的要求进行符号分段、排序。最后通过搜索学习，我编写了链接脚本：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">    .text :</span><br><span class="line">    &#123;</span><br><span class="line">        *(.begin);</span><br><span class="line">        *(.text.*);</span><br><span class="line">        *(.rodata.*);</span><br><span class="line">        *(.end);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
