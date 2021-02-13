@@ -64,6 +64,59 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Node-js进程注入" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" class="article-date">
+  <time datetime="2021-02-13T13:04:58.000Z" itemprop="datePublished">2021-02-13</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>上篇文章实现了对Python进程的代码注入，今天接着来尝试Node.js的注入。</p>
+<h2 id="Inspector"><a href="#Inspector" class="headerlink" title="Inspector"></a>Inspector</h2><p>根据Node.js的<a target="_blank" rel="noopener" href="https://nodejs.org/en/docs/guides/debugging-getting-started/">官方文档</a>得知，在Node.js 8之后加入了新的调试机制(Inspector API)，在启动时加入”–inspect”参数或者向进程发送SIGUSR1信号，就会激活检查器。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> node</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">kill</span> -USR1 $(pidof node)</span></span><br></pre></td></tr></table></figure>
+<p>激活检查器后，终端会打印信息：</p>
+<blockquote>
+<p>Debugger listening on ws://127.0.0.1:9229/f1f12ee0-4f35-4e61-836c-71d175a607e3</p>
+</blockquote>
+<p>检查器监听本地端口9929，使用websocket协议，协议约定可见<a target="_blank" rel="noopener" href="https://chromedevtools.github.io/debugger-protocol-viewer/v8/">文档</a>，连接检查器可以使用node自带的inspect client：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> node inspect -p $(pidof node)</span></span><br></pre></td></tr></table></figure>
+<p>连接后可以通过”exec(‘console.log(123)’)”在目标进程中执行node代码，或者执行”repl”开启交互模式。但是自带的inspect client功能简单，如果需要更好的体验，可以使用chrome的调试模块，在chrome中访问”chrome://inspect”即可。</p>
+<h2 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h2><p><a target="_blank" rel="noopener" href="https://github.com/nodejs/node-inspect">node-inspect</a>就是检查器客户端的官方代码仓库，通过阅读<a target="_blank" rel="noopener" href="https://github.com/nodejs/node-inspect/blob/master/lib/internal/inspect_client.js">inspect_client.js</a>发现，交互协议就是简单的json字符串，每个请求和响应通过id字段一一对应。<br>例如请求开启调试时，通过websocket协议发送字符串：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	<span class="attr">&quot;id&quot;</span>: <span class="number">1</span>,</span><br><span class="line">	<span class="attr">&quot;method&quot;</span>: <span class="string">&quot;Debugger.enable&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>检查器返回响应：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	<span class="attr">&quot;id&quot;</span>: <span class="number">1</span>,</span><br><span class="line">	<span class="attr">&quot;result&quot;</span>: &#123;</span><br><span class="line">		<span class="attr">&quot;debuggerId&quot;</span>: <span class="string">&quot;(D750AD89818A150E3155AC1D6ECB7BB)&quot;</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果你想在目标进程中执行代码，类似于”exec(‘console.log(123)’)”命令，你只需要使用<a target="_blank" rel="noopener" href="https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#method-evaluate">Runtime.evaluate</a>，发送请求：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	<span class="attr">&quot;id&quot;</span>: <span class="number">2</span>,</span><br><span class="line">	<span class="attr">&quot;method&quot;</span>: <span class="string">&quot;Runtime.evaluate&quot;</span>,</span><br><span class="line">	<span class="attr">&quot;params&quot;</span>: &#123;</span><br><span class="line">	    <span class="attr">&quot;expression&quot;</span>: <span class="string">&quot;console.log(123)&quot;</span>,</span><br><span class="line">	    <span class="attr">&quot;includeCommandLineAPI&quot;</span>: <span class="literal">true</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>参数需要设置”includeCommandLineAPI”，否则注入的代码无法使用require函数。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" data-id="ckl3qfudj0000xaoa47lx9bdg" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Python进程注入" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2021/02/12/Python%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" class="article-date">
@@ -662,67 +715,12 @@
 
 
   
-    <article id="post-内存屏障" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" class="article-date">
-  <time datetime="2020-06-21T07:21:49.000Z" itemprop="datePublished">2020-06-21</time>
-</a>
+
+
+  <nav id="page-nav">
     
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/">内存屏障</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>在学习linux kernel开发时, 学习了环形缓冲区的使用, 参考<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/core-api/circular-buffers.html">Circular Buffers</a>.<br>生产者:</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;producer_lock);</span><br><span class="line"></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = buffer-&gt;head;</span><br><span class="line"><span class="comment">/* The spin_unlock() and next spin_lock() provide needed ordering. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = READ_ONCE(buffer-&gt;tail);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_SPACE(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="comment">/* insert one item into the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">head</span>];</span></span><br><span class="line"></span><br><span class="line">        produce_item(item);</span><br><span class="line"></span><br><span class="line">        smp_store_release(buffer-&gt;head,</span><br><span class="line">                          (head + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* wake_up() will make sure that the head is committed before</span></span><br><span class="line"><span class="comment">         * waking anyone up */</span></span><br><span class="line">        wake_up(consumer);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;producer_lock);</span><br></pre></td></tr></table></figure>
-<p>消费者:</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;consumer_lock);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Read index before reading contents at that index. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = smp_load_acquire(buffer-&gt;head);</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = buffer-&gt;tail;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_CNT(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* extract one item from the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">tail</span>];</span></span><br><span class="line"></span><br><span class="line">        consume_item(item);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Finish reading descriptor before incrementing tail. */</span></span><br><span class="line">        smp_store_release(buffer-&gt;tail,</span><br><span class="line">                          (tail + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;consumer_lock);</span><br></pre></td></tr></table></figure>
-<h2 id="疑惑"><a href="#疑惑" class="headerlink" title="疑惑"></a>疑惑</h2><p>可以看到源码中使用了自旋锁, 但是锁的作用仅仅只是用来保证同一时间只有一个消费者或者生产者. 消费者和生产者同时运作是可以的, 也就是对head、tail变量的读取与存储可以同时发生.<br>但是可以看到代码中包含了”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的使用, 它们又是什么作用.<br>如果去搜索这几个关键字, 大概率会看到一个关键词”内存屏障”.</p>
-<h2 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h2><p>关于内存屏障的理解, <a target="_blank" rel="noopener" href="http://lday.me/2017/11/04/0016_what_is_memory_barriers/">Memory Barriers</a>这篇文章已经讲得很详细了.<br>简单概括一下, 就是对内存的一系列读取存储操作的顺序是不可预测的, 这和编译器的优化有关, 也和多个CPU同时运行但拥有独立的内存高速缓冲区相关.</p>
-<h3 id="编译器优化"><a href="#编译器优化" class="headerlink" title="编译器优化"></a>编译器优化</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> x = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> y = <span class="number">2</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>编译器对于两个无关的复制, 在开启性能优化时, 不保证生成的机器码顺序和源码中的顺序相同. 所以在生成的程序中, 机器码的顺序可能是”y=1”在”x=1”的前面. 但是在这个例子中, 这无关紧要.<br>看看这个例子:</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//thread 1</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">run1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    x = <span class="number">1</span>;</span><br><span class="line">    r1 = y;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//thread 2</span></span><br><span class="line"><span class="keyword">void</span> run2</span><br><span class="line">&#123;</span><br><span class="line">    y = <span class="number">1</span>;</span><br><span class="line">    r2 = x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>两个线程同时运行, 那么有多种情况可能发生. 但是我们编写代码时, 人为的肯定这些代码是按照顺序执行的. 所以不论两个线程如何交替, r1和r2不可能同时为0. 但实际上编译器并不知道这些变量会在别处修改, 所以它按照自己的想法进行优化, 打乱代码的顺序.<br>最后的结果可能是”r2=x”和”r1=y”最先交替执行, 这样的结果是不可预期的.</p>
-<h3 id="CPU"><a href="#CPU" class="headerlink" title="CPU"></a>CPU</h3><p>每个CPU可能拥有独立的高速缓冲区, 所以对内存的操作通常会先转化为对缓存的操作. 于是可能发生CPU0往地址x写入值1, 但是只写入了缓冲区. 此时CPU1读取地址x, 但是可惜缓冲区中的值并没有及时刷新到内存中, 所以读出来的值是不正确的.</p>
-<h3 id="限制"><a href="#限制" class="headerlink" title="限制"></a>限制</h3><p>有没有用什么手段可以限制上面所说的乱序问题, 针对编译器的限制方法十分简单, 就是使用”volatile”. volatile关键字对于编译器而言, 是开发者告诉编译器, 这个变量内存的修改, 可能不再你可视范围内, 不要对这个变量相关的代码进行优化.<br>针对CPU的限制, CPU本身提供内存屏障指令:</p>
-<ul>
-<li>写屏障sfence</li>
-<li>读屏障lfence</li>
-<li>读写屏障mfence</li>
-</ul>
-<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><p>现在来看看”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的源码:</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// READ_ONCE核心代码</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> barrier() __asm__ __volatile__(<span class="meta-string">&quot;&quot;</span>: : :<span class="meta-string">&quot;memory&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __READ_ONCE_SIZE						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	<span class="keyword">switch</span> (size) &#123;							\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">1</span>: *(__u8 *)res = *(<span class="keyword">volatile</span> __u8 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">2</span>: *(__u16 *)res = *(<span class="keyword">volatile</span> __u16 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">4</span>: *(__u32 *)res = *(<span class="keyword">volatile</span> __u32 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">8</span>: *(__u64 *)res = *(<span class="keyword">volatile</span> __u64 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">default</span>:							\</span><br><span class="line">		barrier();						\</span><br><span class="line">		__builtin_memcpy((<span class="keyword">void</span> *)res, (<span class="keyword">const</span> <span class="keyword">void</span> *)p, size);	\</span><br><span class="line">		barrier();						\</span><br><span class="line">	&#125;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
-<p>可以看到READ_ONCE针对标准大小的类型, 直接使用volatile实现编译器内存屏障, 保证编译出的机器码中内存访问顺序与源码一致. 而针对其余大小的类型, 使用barrier让编译器保证其之前的内存访问先于其之后的内存访问完成.<br>所以”READ_ONCE”只是针对于编译器的内存屏障, 并不包含内存屏障指令.<br>内核使用宏CONFIG_SMP来判断CPU是否使用了SMP, 在SMP架构下，每个CPU与内存之间，都配有自己的高速缓存. 根据是否使用SMP, “smp_load_acquire”的定义也不同.<br>无SMP:</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> smp_store_release(p, v)						\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	barrier();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
-<p>可以看到无SMP的时候, smp_store_release只是简单的使用了barrier+”WRITE_ONCE”进行编译器层面的内存屏障.</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> mb() alternative(<span class="meta-string">&quot;lock; addl $0,0(%%esp)&quot;</span>, <span class="meta-string">&quot;mfence&quot;</span>, X86_FEATURE_XMM2)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_mb()	mb()</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_store_release(p, v)					\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_load_acquire</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_load_acquire(p)						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	typeof(*p) ___p1 = READ_ONCE(*p);				\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	___p1;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
-<p>而有SMP的时候, 会使用mb插入mfence指令.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://hackerl.github.io/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" data-id="cke6pdptt0000ikoahp2o9hur" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &amp;raquo;</a>
+  </nav>
 
 </section>
         
@@ -753,6 +751,10 @@
       <ul>
         
           <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+          <li>
             <a href="/2021/02/12/Python%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Python进程注入</a>
           </li>
         
@@ -766,10 +768,6 @@
         
           <li>
             <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/">软路由折腾记录三</a>
-          </li>
-        
-          <li>
-            <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/">软路由折腾记录二</a>
           </li>
         
       </ul>
