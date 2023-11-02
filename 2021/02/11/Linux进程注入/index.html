@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Linux进程注入 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言将代码注入到特定进程空间内执行，是一种十分geek的行为，可用于破解、安全防护等。不像Windows有CreateRemoteThread可以直接在目标进程内创建线程，在Linux下进行进程注入会显得复杂些。目前比较常用的手段，就是计算dlopen函数在libc.so中的位置，然后利用ptrace连接目标进程，更改PC地址使其运行该函数，但是该方式只能针对非静态编译的程序。 mandibule">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux进程注入">
+<meta property="og:url" content="https://hackerl.github.io/2021/02/11/Linux%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="前言将代码注入到特定进程空间内执行，是一种十分geek的行为，可用于破解、安全防护等。不像Windows有CreateRemoteThread可以直接在目标进程内创建线程，在Linux下进行进程注入会显得复杂些。目前比较常用的手段，就是计算dlopen函数在libc.so中的位置，然后利用ptrace连接目标进程，更改PC地址使其运行该函数，但是该方式只能针对非静态编译的程序。 mandibule">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-02-11T11:54:40.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.849Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Linux进程注入" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/02/11/Linux%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" class="article-date">
+  <time datetime="2021-02-11T11:54:40.000Z" itemprop="datePublished">2021-02-11</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Linux进程注入
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>将代码注入到特定进程空间内执行，是一种十分geek的行为，可用于破解、安全防护等。不像Windows有CreateRemoteThread可以直接在目标进程内创建线程，在Linux下进行进程注入会显得复杂些。<br>目前比较常用的手段，就是计算dlopen函数在libc.so中的位置，然后利用ptrace连接目标进程，更改PC地址使其运行该函数，但是该方式只能针对非静态编译的程序。</p>
+<h2 id="mandibule"><a href="#mandibule" class="headerlink" title="mandibule"></a>mandibule</h2><p>我在github上发现了项目<a target="_blank" rel="noopener" href="https://github.com/ixty/mandibule">mandibule</a>，该项目不使用任何C标准库(-nostdlib)，类似于strcmp之类的函数都用C重写一遍，所以编译出来的产物就是一个无依赖shellcode。</p>
+<h3 id="虚拟地址空间"><a href="#虚拟地址空间" class="headerlink" title="虚拟地址空间"></a>虚拟地址空间</h3><p>作者巧妙地使用编译器默认不进行函数排序的特点，在唯一的源文件mandibule.c开头编写函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">mandibule_beg</span><span class="params">(<span class="keyword">int</span> aligned)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(!aligned)</span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">unsigned</span> <span class="keyword">long</span>)mandibule_beg;</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">unsigned</span> <span class="keyword">long</span>)mandibule_beg - ((<span class="keyword">unsigned</span> <span class="keyword">long</span>)mandibule_beg % <span class="number">0x1000</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>因为项目只有这一个源文件，所以编译出来只有一个object文件，也就是说该函数会在程序代码段的最开头。在mandibule.c的末尾编写函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">mandibule_end</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">uint8_t</span> * p = (<span class="keyword">uint8_t</span>*)<span class="string">&quot;-= end_rodata =-&quot;</span>;</span><br><span class="line">    p += <span class="number">0x1000</span> - ((<span class="keyword">unsigned</span> <span class="keyword">long</span>)p % <span class="number">0x1000</span>);</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">unsigned</span> <span class="keyword">long</span>)p;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译后该函数当然会在代码段的末尾，作者编写这两个函数的目的是为了在该程序运行时，可以通过调用mandibule_beg(1)、mandibule_end获得该程序的虚拟地址范围。<br>一般来说ELF加载到内存中时，ELF头部之后就是TEXT代码段，又因为这些段是按页对齐的，所以调用mandibule_beg(1)返回自身函数地址向下对齐页，大概率获得ELF头部的虚拟地址，也就是程序虚拟空间的开始。<br>但是获取程序虚拟空间末尾地址却没这么简单，因为在TEXT段后面还有DATA、RODATA等数据段。mandibule_end内使用了一个用不到字符串，该字符串肯定会在RODATA中，所以使用该字符串地址向上对齐页能够获得末尾的虚拟地址。<br>根据这两个地址，我们可以确定程序运行所需的代码、数据地址空间，你甚至可以将该范围的数据全部拷贝到一个堆空间，更改页属性为可执行，然后直接跳转到入口点运行起来，当然，这需要你编译的代码是位置无关的(-PIC)。</p>
+<h3 id="注入流程"><a href="#注入流程" class="headerlink" title="注入流程"></a>注入流程</h3><p>mandibule进行代码注入的步骤：</p>
+<ul>
+<li>使用ptrace附加到目标进程</li>
+<li>备份进程寄存器、内存数据</li>
+<li>将自身运行时地址空间内的所有数据拷贝到目标进程内</li>
+<li>修改目标进程的寄存器，其实跳转到入口地址</li>
+<li>等待目标进程调用exit系统调用</li>
+<li>恢复寄存器、内存数据</li>
+<li>恢复进程的运行</li>
+</ul>
+<p>第三步用到的地址范围就是mandibule_beg、mandibule_end所获得的，也相当于将程序自身拷贝到目标进程中运行。程序在目标进程中运行时，会使用一个自己编写ELF loader加载需要注入的代码。主要是使用mmap将程序段映射到进程空间，如果依赖动态库则还需要映射interpreter，最后生成一个假栈并设置好argv、env等信息，最后直接跳转到程序入口地址。</p>
+<h3 id="缺陷"><a href="#缺陷" class="headerlink" title="缺陷"></a>缺陷</h3><p>使用mandibule可以对静态编译的程序进行注入，但是项目的设计有些缺陷：</p>
+<ul>
+<li>没有将shellcode与ptrace注入剥离，导致耦合严重</li>
+<li>项目不使用C标准库，进行二次开发较为麻烦</li>
+</ul>
+<p>另外我在使用中发现了许多的bug，可见项目<a target="_blank" rel="noopener" href="https://github.com/ixty/mandibule/issues">issue</a>，我在推特上联系了作者，但他并没有要接着进行维护的意思。</p>
+<h2 id="pangolin"><a href="#pangolin" class="headerlink" title="pangolin"></a>pangolin</h2><p>最后我决定对项目进行重构，将ELF loader编写成独立的shellcode模块，而ptrace注入部分完全可以用熟悉的C++开发。具体的代码细节不赘述，可以自行在github上查看<a target="_blank" rel="noopener" href="https://github.com/Hackerl/pangolin">项目</a>。</p>
+<h3 id="链接脚本"><a href="#链接脚本" class="headerlink" title="链接脚本"></a>链接脚本</h3><p>在我的设计中，将shellcode部分编译成独立的so文件，然后根据导出符号的地址获取所有shellcode数据，将其写入目标进程中运行。但是在实现中遇到了问题，因为代码编译后不仅仅只有代码段，还包括RODATA等数据段，我们需要将所有数据都包括进来，而导出符号只会出现在TEXT中。<br>我知道在链接阶段可以指定所有符号的地址，让编译器根据我们的要求进行符号分段、排序。最后通过搜索学习，我编写了链接脚本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">SECTIONS</span><br><span class="line">&#123;</span><br><span class="line">    .text :</span><br><span class="line">    &#123;</span><br><span class="line">        *(.begin);</span><br><span class="line">        *(.text.*);</span><br><span class="line">        *(.rodata.*);</span><br><span class="line">        *(.end);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>使用该脚本进行链接，最后生成的程序只会有一个TEXT段，字符串等数据都会在该段中。另外我编写了三个导出函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __attribute__ ((section (<span class="string">&quot;.begin&quot;</span>))) shellcode_begin();</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">shellcode_start</span><span class="params">()</span></span>;</span><br><span class="line"><span class="keyword">void</span> __attribute__ ((section (<span class="string">&quot;.end&quot;</span>))) shellcode_end();</span><br></pre></td></tr></table></figure>
+<p>可以看到我指定了两个section分配给shellcode_begin、shellcode_end，也对应了链接脚本中的begin、end。所以最后生成的程序中，符号shellcode_begin会在TEXT段的最开始，shellcode_end在TEXT的末尾。<br>我们只需要将shellcode_begin至shellcode_end之间的数据拷贝到目标进程空间，然后跳转到shellcode_start - shellcode_begin的入口偏移处，就可以在进程中运行我们编写的shellcode。</p>
+<h3 id="多线程"><a href="#多线程" class="headerlink" title="多线程"></a>多线程</h3><p>mandibule使用ptrace附加到进程主线程，此时别的线程依旧在运行中，在将数据拷贝到目标进程中时，覆盖的范围一般从ELF头部开始。如果覆盖的范围较大，就可能覆盖到代码段，而恰好此时其余的线程调用了一个被覆盖了的函数，就会导致程序崩溃。<br>为了减少多线程进程crash的可能性，我对内存覆盖进行了优化，先覆盖一小段shellcode，在目标进程中调用mmap系统调用申请内存，用申请的内存来储存较大的ELF loader。并且在ptrace阶段，会附加到所有线程，使其临时暂停运行。</p>
+<h3 id="栈空间"><a href="#栈空间" class="headerlink" title="栈空间"></a>栈空间</h3><p>shellcode在目标进程中运行时，使用的是线程暂停时的栈，对于普通的程序，栈空间足够，所以不需要担心出现意外情况。但是对于golang这类自己管理栈的程序，栈空间十分小，shellcode在进程中运行时可能会溢出栈空间，覆盖掉程序数据最终导致crash。<br>另外，如果想在目标进程中驻留，可以在注入后创建新线程，但是在程序恢复运行后，新线程调用getenv等API运行会导致crash。因为argv、env等数据存在于我们注入时构建的栈上，但是该栈是别的线程拥有的，可能数据早已丢失。<br>为了解决这两个问题，我在ELF loader的开头使用mmap申请一块足够大的栈空间，并且修改SP寄存器更换栈空间。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">loader_main</span><span class="params">(<span class="keyword">void</span> *ptr)</span> </span>&#123;</span><br><span class="line">    LOG(<span class="string">&quot;elf loader start&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">char</span> *<span class="built_in">stack</span> = <span class="built_in">malloc</span>(STACK_SIZE);</span><br><span class="line">    <span class="keyword">char</span> *stack_top = <span class="built_in">stack</span> + STACK_SIZE;</span><br><span class="line"></span><br><span class="line">    FIX_SP_JMP(stack_top, elf_loader, ptr);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>还有许多的小细节，都存在于代码中，如果感兴趣可以自行阅读。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2021/02/11/Linux%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" data-id="clogx15ke00029tt2cptr6rfs" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2021/02/12/Python%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Python进程注入
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/10/15/flutter%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B%E4%B8%80/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">flutter逆向工程一</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

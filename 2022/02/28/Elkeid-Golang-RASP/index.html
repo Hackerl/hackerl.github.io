@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Elkeid Golang RASP | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="简介在以往的 RASP 解决方案中，部署方式通常需要业务参与，修改相关配置或是启动参数，这也就造成了 RASP 部署困难的窘境。更有甚者，由于 Golang 编译型语言的特性，多数 RASP 只能被迫选择在编译期集成进去，以降低技术实现成本，但这无疑又间接加大了部署推广的难度。我始终认为限制 RASP 发展与推广的是部署，而并非是技术难度，许多厂商在各语言的技术实现上都有大同小异的成熟方案。例如使">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Elkeid Golang RASP">
+<meta property="og:url" content="https://hackerl.github.io/2022/02/28/Elkeid-Golang-RASP/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="简介在以往的 RASP 解决方案中，部署方式通常需要业务参与，修改相关配置或是启动参数，这也就造成了 RASP 部署困难的窘境。更有甚者，由于 Golang 编译型语言的特性，多数 RASP 只能被迫选择在编译期集成进去，以降低技术实现成本，但这无疑又间接加大了部署推广的难度。我始终认为限制 RASP 发展与推广的是部署，而并非是技术难度，许多厂商在各语言的技术实现上都有大同小异的成熟方案。例如使">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-02-28T08:16:45.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.848Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Elkeid-Golang-RASP" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2022/02/28/Elkeid-Golang-RASP/" class="article-date">
+  <time datetime="2022-02-28T08:16:45.000Z" itemprop="datePublished">2022-02-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Elkeid Golang RASP
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>在以往的 <code>RASP</code> 解决方案中，部署方式通常需要业务参与，修改相关配置或是启动参数，这也就造成了 <code>RASP</code> 部署困难的窘境。更有甚者，由于 <code>Golang</code> 编译型语言的特性，多数 <code>RASP</code> 只能被迫选择在编译期集成进去，以降低技术实现成本，但这无疑又间接加大了部署推广的难度。<br>我始终认为限制 <code>RASP</code> 发展与推广的是部署，而并非是技术难度，许多厂商在各语言的技术实现上都有大同小异的成熟方案。例如使用 <code>JVM</code> 的 <code>Instrumentation</code> 功能动态修改 <code>bytecode</code>，可以在虚拟机功能的基础上实现稳定的运行时防护。<br>所以在 <code>Elkeid RASP</code> 的项目初期，团队就敲定了动态注入的部署方式，一切都朝着降低部署难度的目标靠拢。</p>
+<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>目前 <code>Elkeid RASP</code> 开源了 <code>JVM</code>、<code>Python</code>、<code>Node</code> 以及 <code>Golang</code> 四种语言的运行时保护功能，四种语言均支持对已存在的进程动态注入防护代码。其中 <code>JVM</code>、<code>Node</code> 依赖于虚拟机提供的机制，运行稳定，而 <code>Python</code> 与 <code>Golang</code> 则需要利用 <code>ptrace</code> 在进程层面上做注入。</p>
+<h3 id="进程注入"><a href="#进程注入" class="headerlink" title="进程注入"></a>进程注入</h3><p>为了实现对 <code>Python</code> 以及 <code>Golang</code> 进程的动态防护，先不考虑运行时层面的代码篡改，我们至少需要一个能够在 <code>Linux</code> 任意进程空间内执行任意代码的工具。但是很可惜，<code>Linux</code> 没有类似于 <code>CreateRemoteThread</code> 的接口。<br>大多数的代码注入，都是使用 <code>ptrace</code> 篡改进程执行流程，调用 <code>dlopen</code> 加载动态库。而且大多数项目都会指出，该方式的不稳定性可能会导致进程永久卡住。因为 <code>dlopen</code> 底层会调用 <code>malloc</code>，而在 <code>glibc</code> 的官方文档中指明了 <code>malloc</code> 是不可重入函数。<br>在研究过程中，我发现了 <a target="_blank" rel="noopener" href="https://github.com/ixty/mandibule">mandibule</a> 这个项目，它另辟蹊径地编写了一个 ELF Loader，再使用 <code>ptrace</code> 让该 ELF Loader 在目标进程内执行，加载一个全新的程序，执行完成后恢复主线程的寄存器。<br>由于作者已经放弃维护，而且我自己在使用过程中，发现了项目一些设计上的缺陷以及代码 bug。于是我借鉴了该思路，开发了 <a target="_blank" rel="noopener" href="https://github.com/Hackerl/pangolin">pangolin</a> 这个工具，它可以在任意进程内临时运行另一个程序，细节可以看相关的 <a href="https://hackerl.github.io/2021/02/11/Linux%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">blog</a>。</p>
+<h3 id="Inline-Hook"><a href="#Inline-Hook" class="headerlink" title="Inline Hook"></a>Inline Hook</h3><p>借助 <code>pangolin</code>，我们可以在一个 <code>Golang</code> 的进程中执行任意代码，我们甚至可以篡改可执行段的机器码，很轻松地便可以对某个函数进行 <code>Inline Hook</code>。例如我们想对 <code>Golang</code> 的命令执行函数 <code>exec.Command</code> 进行 <code>Inline Hook</code>，那么可以在进程注入期间修改函数 <code>os/exec.Command</code> 的开头指令，使其执行时先跳转到我们编写的函数中。在我们自定义的函数中，便可以获取该函数调用时的入参以及调用栈，再通过某种通信方式传输出去，一个简单的 <code>RASP</code> 模型便完成了。<br>那么要完成该流程，我们需要一些先决条件：</p>
+<ul>
+<li>在去除掉 <code>ELF</code> 符号信息的情况下，如何获取 <code>Golang</code> 的符号信息，以确定函数的地址，完成对函数的 <code>Inline Hook</code> 操作。</li>
+<li><code>Golang</code> 如何进行函数调用，通过寄存器亦或是栈，我们又该如何读取函数的入参。</li>
+<li>如何获取 <code>Golang</code> 当前函数的 <code>Stack Frame</code> 长度，用于定位上一层函数的返回地址，完成调用栈回溯。</li>
+</ul>
+<h3 id="Golang-Runtime-Symbol-Information"><a href="#Golang-Runtime-Symbol-Information" class="headerlink" title="Golang Runtime Symbol Information"></a>Golang Runtime Symbol Information</h3><p>在去除了 <code>ELF</code> 符号信息后，一个编译好的 <code>Golang</code> 程序还是可以正确地执行 <code>debug.PrintStack</code> 函数，那么便可以证明 <code>Golang</code> 内部必然还存在一个符号表。根据官方文档 <a target="_blank" rel="noopener" href="https://docs.google.com/document/d/1lyPIbmsYbXnpNj57a261hgOYVpNRcgydurVQIyZOz_o/pub">Go 1.2 Runtime Symbol Information</a> 的介绍，<code>Golang</code> 从 1.2 之后的版本内置了符号信息，对于 <code>ELF</code> 格式来说，通常放置在 <code>.gopclntab</code> 这个 <code>section</code>。<br>这些符号信息不仅包含了函数名称、函数地址范围以及函数栈帧长度信息，甚至还有相关的代码文件名，以及行号等源码信息。根据文档记录的信息格式，我们可以很轻松地解析出一个 <code>Golang</code> 二进制程序的符号表。</p>
+<h3 id="Golang-build-info"><a href="#Golang-build-info" class="headerlink" title="Golang build info"></a>Golang build info</h3><p>对于 <code>Golang</code> 1.13 以上编译出的二进制，可以使用 <code>go version</code> 命令查看编译时的 <code>Golang</code> 版本，由此说明二进制中内嵌了相关的编译信息。对于 <code>ELF</code> 格式来说，编译信息存放在 <code>.go.buildinfo</code> <code>section</code>，其中包含 <code>Golang</code> 版本号以及三方依赖库列表。值得注意的是，<code>buildinfo</code> 的格式在 <code>Golang</code> 1.18 版本发生了改变，弃用了数据指针，相关解析代码可查看<a target="_blank" rel="noopener" href="https://github.com/bytedance/Elkeid/blob/main/rasp/golang/go/symbol/build_info.cpp">官方仓库</a>。</p>
+<h3 id="Golang-internal-ABI"><a href="#Golang-internal-ABI" class="headerlink" title="Golang internal ABI"></a>Golang internal ABI</h3><p>接下来我们需要了解 <code>Golang</code> 编译出的机器码，是如何进行函数调用的，以及 <code>Golang</code> 的结构体在内存中是如何存放的，了解这些之后我们才能正确地取出函数入参。</p>
+<h4 id="memory-layout"><a href="#memory-layout" class="headerlink" title="memory layout"></a>memory layout</h4><p><code>Golang</code> 包含的内置类型描述，可以在官方文档 <a target="_blank" rel="noopener" href="https://go.dev/ref/spec#Types">The Go Programming Language Specification</a> 中找到。对于数值类型，<code>Golang</code> 规范了类型的<a target="_blank" rel="noopener" href="https://go.dev/ref/spec#Size_and_alignment_guarantees">内存占用大小</a>，而字节对齐则随 <code>CPU</code> 架构不同而变化。对于复合类型，例如 <code>string</code>、<code>slice</code> 以及 <code>map</code> 等，内存占用大小由组成的基础类型及其字节对齐决定，而该复合类型的字节对齐由组成类型中最大的字节对齐决定。<br>文档中并未描述 <code>string</code> 等内置类型的底层内存排布，但是我们可以从一些<a target="_blank" rel="noopener" href="https://go101.org/article/string.html">文章</a>，亦或是 <code>CGO</code> 生成的头文件中一窥究竟。<br>以下是我使用 <code>cpp</code> 对 <code>x64</code> 架构下 <code>Golang</code> 类型的描述，代码可以在 <code>Elkeid</code> 官方<a target="_blank" rel="noopener" href="https://github.com/bytedance/Elkeid/blob/main/rasp/golang/go/type/basic.h">仓库</a>中找到：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">namespace</span> go &#123;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">signed</span> <span class="keyword">char</span> Int8;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">char</span> Uint8;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">short</span> Int16;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">short</span> Uint16;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">int</span> Int32;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">int</span> Uint32;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">long</span> <span class="keyword">long</span> Int64;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> Uint64;</span><br><span class="line">    <span class="keyword">typedef</span> Int64 Int;</span><br><span class="line">    <span class="keyword">typedef</span> Uint64 Uint;</span><br><span class="line">    <span class="keyword">typedef</span> __SIZE_TYPE__ Uintptr;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">float</span> Float32;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">double</span> Float64;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">float</span> <span class="built_in">_Complex</span> Complex64;</span><br><span class="line">    <span class="keyword">typedef</span> <span class="keyword">double</span> <span class="built_in">_Complex</span> Complex128;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">interface</span> &#123;</span></span><br><span class="line">        <span class="keyword">void</span> *t;</span><br><span class="line">        <span class="keyword">void</span> *v;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">string</span> &#123;</span></span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">char</span> *data;</span><br><span class="line">        <span class="keyword">ptrdiff_t</span> length;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">slice</span> &#123;</span></span><br><span class="line">        T *values;</span><br><span class="line">        Int count;</span><br><span class="line">        Int capacity;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到 <code>string</code> 类型由两个字段组成，数据指针加上字符串长度，在内存中总共占用 16 字节。<code>string</code> 的内存对齐则由这两个字段决定，即 <code>align(string) = max(align(const char *), align(ptrdiff_t))</code>。<br>对于 <code>int32</code> 这些 <code>Golang</code> 的基础数值类型来说，其字节对齐与 <code>cpp</code> 默认的对齐一致。</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>64-bit</th>
+<th></th>
+<th>32-bit</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>Size</td>
+<td>Align</td>
+<td>Size</td>
+<td>Align</td>
+</tr>
+<tr>
+<td>bool, uint8, int8</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>uint16, int16</td>
+<td>2</td>
+<td>2</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>uint32, int32</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>uint64, int64</td>
+<td>8</td>
+<td>8</td>
+<td>8</td>
+<td>4</td>
+</tr>
+<tr>
+<td>int, uint</td>
+<td>8</td>
+<td>8</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>float32</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>float64</td>
+<td>8</td>
+<td>8</td>
+<td>8</td>
+<td>4</td>
+</tr>
+<tr>
+<td>complex64</td>
+<td>8</td>
+<td>4</td>
+<td>8</td>
+<td>4</td>
+</tr>
+<tr>
+<td>complex128</td>
+<td>16</td>
+<td>8</td>
+<td>16</td>
+<td>4</td>
+</tr>
+<tr>
+<td>uintptr, *T, unsafe.Pointer</td>
+<td>8</td>
+<td>8</td>
+<td>4</td>
+<td>4</td>
+</tr>
+</tbody></table>
+<p>但是 <code>Golang</code> 并不确保这些类型的字节对齐不变，官方似乎正在考虑改变 <code>x86</code> 上 <code>int64</code> 的字节对齐。现在我们已经了解了 <code>Golang</code> 类型的内存排布，那么对于任意入参的函数调用，我们都能准确的从内存中取出数据。现在剩下的问题便是函数调用发生时，参数将会存放在何处？</p>
+<h4 id="stack-based-calling-conventions"><a href="#stack-based-calling-conventions" class="headerlink" title="stack-based calling conventions"></a>stack-based calling conventions</h4><p><code>Golang</code> 在 1.17 版本之前的函数调用中，参数与结果均存放在栈上。但由于栈上频繁的内存操作影响了运行性能，所以社区草拟了<a target="_blank" rel="noopener" href="https://go.googlesource.com/proposal/+/master/design/40724-register-calling.md">基于寄存器的调用约定方案</a>，并在 1.17 版本后切换到该调用约定。<br>我们先了解 <code>Golang</code> 最原始的 <code>ABI0</code>，也就是基于栈的调用约定，细节描述可以从文档 <a target="_blank" rel="noopener" href="https://go.dev/doc/asm">A Quick Guide to Go’s Assembler</a> 找到。在函数调用发生时，调用者需要将参数以及返回值，从低地址向高地址依次排列在栈顶。<br>例如在调用函数 <code>func A(a int32, b string) (int32, error)</code> 时，我们需要按下列排布存放参数与返回值：</p>
+<pre><code>+------------------------------+
+| 2nd result error.v           |
+| 2nd result error.t           |
+| 1st result int32             |
+| &lt;pointer-sized alignment&gt;    |
+| b string.length              |
+| b string.data                |
+| a int32                      |
++------------------------------+ ↓ stack pointer</code></pre>
+<p>先放入 4 字节的参数 a，接着放入 <code>string</code> 类型的参数 b。由于 <code>string</code> 类型的字节对齐是 8，而此时的地址为 <code>sp + 4</code>，所以需要填充 4 字节的空白区域，从 <code>sp + 8</code> 开始放置 <code>string</code> 的数据。参数存放完成后，如果此时的地址没有按指针大小对齐，则需要填充空白字节。例如在 <code>amd64</code> 架构上，最后一个 <code>int32</code> 的参数放置于地址 0x40000，占用 4 字节大小，那么我们需要再填充 4 字节空白数据，使得返回值存放地址为 0x40008，按当前架构的指针大小 8 对齐。<br>我们接着放入第一个 <code>int32</code> 的返回值，而第二个返回值类型为 <code>error</code>，实际上就是 <code>interface</code> 类型。由上一小结可知，<code>interface</code> 类型占用 16 字节，按 8 字节对齐，所以我们填充 4 字节后，放入 <code>error</code> 结构体。当然，对于返回值而言，我们并不会真正地写入数据，而是预留内存空间以供被调用者写入。</p>
+<h4 id="register-based-calling-conventions"><a href="#register-based-calling-conventions" class="headerlink" title="register-based calling conventions"></a>register-based calling conventions</h4><p>对于基于寄存器的调用约定，调用者需要先尝试将参数放置于寄存器中。如果结构体太大，或是结构体中包含 <code>Non-trivial arrays</code> 类型成员导致无法存放，则会转而放置于栈上。对于 <code>amd64</code> 架构，<code>Golang</code> 使用<code>X0</code> – <code>X14</code> 寄存器存放浮点数数据，而对于整数数值，则使用以下 9 个整数寄存器存放：</p>
+<pre><code>RAX, RBX, RCX, RDI, RSI, R8, R9, R10, R11</code></pre>
+<p>对于数值类型参数，我们可以直接将参数一一对应到寄存器中。而对于结构体类型，我们需要将结构体拆解成多个基础数值类型，然后进行对应放置。如果一个结构体拆解后，需要占用的寄存器数超过了剩余的寄存器数，则该整个结构体都只能放置于栈上。该部分细节繁杂，本文不作赘述，细节请看文档 <a target="_blank" rel="noopener" href="https://go.googlesource.com/go/+/refs/heads/dev.regabi/src/cmd/compile/internal-abi.md">Go internal ABI specification</a>。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><h3 id="Runtime-conflict"><a href="#Runtime-conflict" class="headerlink" title="Runtime conflict"></a>Runtime conflict</h3><p>有了上述理论支持后，我们现在可以着手编写钩子函数了。在钩子函数执行过程中，不能随意篡改堆栈上的数据，执行完成后需要恢复所有寄存器，并跳转到原函数继续执行。需要注意的是，我们必须时刻记住，执行钩子函数的是 <code>Golang</code> 的线程，那么就存在以下两个问题：</p>
+<ul>
+<li><code>Golang</code> 为线程分配的栈空间很小，钩子函数如果使用过度会导致 <code>Segmentation fault</code>。</li>
+<li>在 <code>Golang</code> 的线程中执行时，我们无法正常调用 <code>glibc</code> 函数，例如 <code>malloc</code> 依赖于 <code>fs</code> 寄存器指向的 <code>TLS</code> 结构，以保证线程安全，但 <code>fs</code> 在 1.17 版本以下的 <code>Golang</code> 线程中指向全局 <code>G</code>。</li>
+</ul>
+<p>为了解决第一个问题，我们需要在钩子函数的入口处，申请一块足够大的内存替换当前栈。而对于第二点，我们只能使用<code>freestanding</code> 代码及 <code>syscall</code> 来完成参数读取与栈回溯操作。为了更好地解耦与复用，于是我开发了一个不依赖于 <code>glibc</code> 的小型 <a target="_blank" rel="noopener" href="https://github.com/Hackerl/c-runtime">c-runtime</a>，包含内联汇编编写的 <code>syscall</code> 以及必要的标准库函数。我们可以安全地在 <code>Golang</code> 线程中调用 <code>c-runtime</code> 中的任何函数，例如使用底层是无锁环形缓冲区和 <code>mmap syscall</code> 的 <code>z_malloc</code> 来分配堆空间。</p>
+<h3 id="钩子函数"><a href="#钩子函数" class="headerlink" title="钩子函数"></a>钩子函数</h3><p>下面是使用内联汇编编写的钩子函数 <code>wrapper</code>，可以通用地进行栈替换、寄存器备份以及函数跳转：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">asm</span> <span class="title">volatile</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov $1, %%r12;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %%rsp, %%r13;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $8, %%r13;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;and $15, %%r13;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm14, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm13, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm12, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm11, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm10, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm9, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm8, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm7, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm6, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm5, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm4, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm3, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm2, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm1, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu %%xmm0, (%%rsp);&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%r11;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%r10;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%r9;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%r8;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rsi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rcx;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rbx;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rax;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;sub %%r13, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %0, %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;call z_malloc;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;cmp $0, %%rax;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;je end_%=;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %%rsp, %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %%rax, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add %0, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rax;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;push %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $312, %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add %%r13, %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;call %P1;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %%rax, %%r12;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rsi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;mov %%rsi, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;call z_free;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;end_%=:&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add %%r13, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rax;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rbx;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rcx;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rdi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%rsi;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%r8;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%r9;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%r10;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;pop %%r11;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm0;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm1;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm2;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm3;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm4;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm5;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm6;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm7;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm8;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm9;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm10;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm11;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm12;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm13;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;movdqu (%%rsp), %%xmm14;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;add $16, %%rsp;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;cmp $0, %%r12;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;je block_%=;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;jmp *%2;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;block_%=:&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;ret;&quot;</span></span></span></span><br><span class="line"><span class="function"><span class="params">    ::</span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;i&quot;</span>(STACK_SIZE),</span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;i&quot;</span>(handler),</span></span></span><br><span class="line"><span class="function"><span class="params">    <span class="string">&quot;m&quot;</span>(origin)</span></span></span><br><span class="line"><span class="function"><span class="params">)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>r12</code>和<code>r13</code> 寄存器是 <code>Golang</code> 中可以随意使用的临时寄存器，我们用 <code>r12</code> 来标识是否要阻断当前调用。而<code>r13</code> 用来参与计算，以确保调用 <code>handler</code> 时栈指针按 <code>16</code> 字节对齐，这是 <code>amd64</code> 下 <code>gcc</code> 的默认约定。<br>在代码的开头，我们先将 <code>X0</code> - <code>X14</code> 浮点数寄存器推入栈中，接着推入 <code>Golang</code> 1.17 以上需要使用的整数寄存器。然后调用 <code>z_malloc</code> 申请 40K 的内存替换当前栈，再以原始栈指针为参数调用 <code>handler</code>。在 <code>handler</code> 函数中，根据 <code>Golang</code> 的版本不同，我们可以从栈上存储的寄存器中，或上一函数的 <code>Stack frame</code> 中读出入参。当然也可以根据原始栈指针读取返回地址，从 <code>Golang</code> 符号表中查找函数信息，然后根据 <code>Stack frame</code> 读出上一层的返回地址，循环往复完成栈回溯。<br>我们甚至可以在 <code>handler</code> 中判断参数是否合法，当参数匹配到我们设置的正则时，可以手动写入 <code>error</code> 返回值到栈上，并返回 <code>false</code> 以将 <code>r12</code> 寄存器置零完成阻断。在 <code>handler</code> 函数执行完成后，从栈上恢复寄存器，并根据 <code>r12</code> 决定返回还是跳转至原函数。<br>为了更好地进行参数读取和阻断，我使用<code>Templates</code> 编写了一套 <code>Golang</code> 类型反射库，可以在运行时获取 <code>Golang</code> 类型元数据。元数据包含类型的基础类型成员数，每个成员的相对偏移以及占用大小，还有该类型需要占用的浮点/整数寄存器数。在 <code>handler</code> 函数中，我们可以轻松地利用这些元数据分析 <code>Golang</code> 的参数内存布局，正确地取出数据。由于该部分代码细节繁多，限于本文篇幅所以不进行详细讲解，取参与回溯部分请直接阅读<a target="_blank" rel="noopener" href="https://github.com/bytedance/Elkeid/tree/main/rasp/golang/go/api">仓库代码</a>。</p>
+<h3 id="回溯停止"><a href="#回溯停止" class="headerlink" title="回溯停止"></a>回溯停止</h3><p>对于调用栈的回溯，上面已经解析过了，我们可以取出当前栈顶的返回地址，在符号表中查找地址相关的函数的名称、文件、行号以及栈帧大小。获取栈帧大小后，取出 <code>sp + framesize</code> 的上一层返回地址，循环上述步骤即可。但有一个问题是，我们在哪里结束循环？调用链的层数一定有限，那么第一个函数是哪个？<br>在 1.2 版本中，<code>Golang</code> 通过判断函数名是否为 <code>runtime.goexit</code>、<code>runtime.rt0_go</code> 等入口函数，由此决定是否终止回溯。而对于较新版本的 <code>Golang</code> ，符号信息中增加了一个 <code>funcID</code> 字段，通过 <code>funcID</code> 判断函数类型是否为入口函数。但 <code>funcID</code> 的本质与函数名比较无二，而且 <code>funcID</code> 在版本之间会发生变动，所以最后决定简单地使用函数名判断：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">constexpr</span> <span class="keyword">auto</span> STACK_TOP_FUNCTION = &#123;</span><br><span class="line">        <span class="string">&quot;runtime.mstart&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.rt0_go&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.mcall&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.morestack&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.lessstack&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.asmcgocall&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.externalthreadhandler&quot;</span>,</span><br><span class="line">        <span class="string">&quot;runtime.goexit&quot;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="消息通信"><a href="#消息通信" class="headerlink" title="消息通信"></a>消息通信</h3><p>成功获取入参和调用栈后，要如何把消息传输出去？如果需要进行 <code>socket</code> 通信，并且不阻塞 <code>Golang</code> 线程，那就需要驻留一个线程在 <code>Golang</code> 进程内，实现一个简单的生产者消费者模型。那么在无法使用 <code>std::queue</code> 等标准库的情况下，要怎么实现消费丢列，又该如何保证线程安全？<br>为了尽可能地减少性能影响，我利用 <code>gcc</code> 内置的原子操作实现了一个定长的<a target="_blank" rel="noopener" href="https://github.com/Hackerl/zero/blob/master/include/zero/atomic/circular_buffer.h">无锁环形缓冲区</a>，并使用 <code>c-runtime</code> 中实现的 <code>condition variable</code> 做线程同步，实现了一个高效的消息队列。在每个钩子函数触发时，都会将入参和调用栈打包放入队列，如果队列已满则丢弃该消息。<br>在 <code>pangolin</code> 注入过程中，我们启动一个<a target="_blank" rel="noopener" href="https://github.com/bytedance/Elkeid/blob/main/rasp/golang/client/smith_probe.cpp#L40">消费者线程</a>，从消息队列中消费函数调用信息，序列化为 <code>json</code> 后通过 <code>unix socket</code> 传输到 <code>server</code>。</p>
+<h3 id="信号屏蔽"><a href="#信号屏蔽" class="headerlink" title="信号屏蔽"></a>信号屏蔽</h3><p><code>Golang</code> 启动时会设置信号处理函数，而在进程收到信号时，内核会随机选择一个线程进行信号处理。我们在 <code>Golang</code> 进程中驻留的几个 <code>cpp</code> 线程有可能被选中用于执行处信号处理函数，但是处理函数默认当前处于 <code>Golang</code> 线程中，读取 <code>fs</code> 寄存器以访问 <code>Golang</code> 的全局 <code>G</code>，但此时 <code>fs</code> 所指向的其实是 <code>glibc</code> 的 <code>TLS</code>，于是导致异常退出。<br>为了避免这种情况发生，我们需要手动设置驻留的 <code>cpp</code> 线程，令其屏蔽所有信号：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">sigset_t</span> mask = &#123;&#125;; </span><br><span class="line"><span class="keyword">sigset_t</span> origin_mask = &#123;&#125;;</span><br><span class="line"></span><br><span class="line">sigfillset(&amp;mask);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (pthread_sigmask(SIG_SETMASK, &amp;mask, &amp;origin_mask) != <span class="number">0</span>) &#123;</span><br><span class="line">    LOG_ERROR(<span class="string">&quot;set signal mask failed&quot;</span>);</span><br><span class="line">    quit(<span class="number">-1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><p>在学习了原理和实现细节后，我们来解析一下 <code>go-probe</code> 的执行流程，<a target="_blank" rel="noopener" href="https://github.com/bytedance/Elkeid/blob/main/rasp/golang/main.cpp">入口函数</a>如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;go/symbol/build_info.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;go/symbol/line_table.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;go/symbol/interface_table.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;go/api/api.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;zero/log.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;csignal&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;asm/api_hook.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;z_syscall.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">quit</span><span class="params">(<span class="keyword">int</span> status)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">uintptr_t</span> address = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">char</span> *env = getenv(<span class="string">&quot;QUIT&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!env) &#123;</span><br><span class="line">        LOG_WARNING(<span class="string">&quot;can&#x27;t found quit env variable&quot;</span>);</span><br><span class="line">        z_exit_group(<span class="number">-1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!zero::strings::toNumber(env, address, <span class="number">16</span>) || !address) &#123;</span><br><span class="line">        LOG_ERROR(<span class="string">&quot;invalid quit function address&quot;</span>);</span><br><span class="line">        z_exit_group(<span class="number">-1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ((<span class="keyword">decltype</span>(quit) *)address)(status);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    INIT_FILE_LOG(zero::INFO, <span class="string">&quot;go-probe&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">sigset_t</span> mask = &#123;&#125;;</span><br><span class="line">    <span class="keyword">sigset_t</span> origin_mask = &#123;&#125;;</span><br><span class="line"></span><br><span class="line">    sigfillset(&amp;mask);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (pthread_sigmask(SIG_SETMASK, &amp;mask, &amp;origin_mask) != <span class="number">0</span>) &#123;</span><br><span class="line">        LOG_ERROR(<span class="string">&quot;set signal mask failed&quot;</span>);</span><br><span class="line">        quit(<span class="number">-1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!gLineTable-&gt;load()) &#123;</span><br><span class="line">        LOG_ERROR(<span class="string">&quot;line table load failed&quot;</span>);</span><br><span class="line">        quit(<span class="number">-1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (gBuildInfo-&gt;load()) &#123;</span><br><span class="line">        LOG_INFO(<span class="string">&quot;go version: %s&quot;</span>, gBuildInfo-&gt;mVersion.c_str());</span><br><span class="line"></span><br><span class="line">        CInterfaceTable table = &#123;&#125;;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!table.load()) &#123;</span><br><span class="line">            LOG_ERROR(<span class="string">&quot;interface table load failed&quot;</span>);</span><br><span class="line">            quit(<span class="number">-1</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        table.findByFuncName(<span class="string">&quot;errors.(*errorString).Error&quot;</span>, (go::interface_item **)CAPIBase::errorInterface());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    gSmithProbe-&gt;start();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">auto</span> &amp;api : GOLANG_API) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; gLineTable-&gt;mFuncNum; i++) &#123;</span><br><span class="line">            CFunc func = &#123;&#125;;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (!gLineTable-&gt;getFunc(i, func))</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">const</span> <span class="keyword">char</span> *name = func.getName();</span><br><span class="line">            <span class="keyword">void</span> *entry = (<span class="keyword">void</span> *)func.getEntry();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> ((api.ignoreCase ? strcasecmp(api.name, name) : <span class="built_in">strcmp</span>(api.name, name)) == <span class="number">0</span>) &#123;</span><br><span class="line">                LOG_INFO(<span class="string">&quot;hook %s: %p&quot;</span>, name, entry);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (hookAPI(entry, (<span class="keyword">void</span> *)api.metadata.entry, api.metadata.origin) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">                    LOG_WARNING(<span class="string">&quot;hook %s failed&quot;</span>, name);</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    pthread_sigmask(SIG_SETMASK, &amp;origin_mask, <span class="literal">nullptr</span>);</span><br><span class="line">    quit(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>需要明确的是，<code>go-probe</code> 由 <code>pangolin</code> 注入到 <code>Golang</code> 进程的主线程中临时运行。同时 <code>pangolin</code> 使用 <code>ptrace</code> 持续监听该线程的 <code>syscall</code> 调用，拦截到 <code>main</code> 函数发出的 <code>exit</code> 或 <code>exit_group</code> 调用后，恢复线程状态并结束注入流程。然而可以看到，上面的代码中会优先调用环境变量 <code>QUIT</code> 指向的函数，这又是为何？<br>在实际的部署过程中，由于资源限制等诸多特殊原因，<code>pangolin</code> 进程可能会在注入期间被 <code>kill</code>。那么此时 <code>main</code> 函数执行的 <code>syscall</code> 就无人拦截，<code>exit_group</code> 会真正地导致业务进程退出。为了让执行 <code>go-probe</code> 的线程能够自我恢复，<code>pangolin</code> 会提前将线程状态快照写入到 <code>Golang</code> 内存中。同时遗留在 <code>Golang</code> 进程中的 <code>shellcode</code> 包含一个 <a target="_blank" rel="noopener" href="https://github.com/Hackerl/pangolin/blob/master/shellcode/loader/quit.c#L18">quit</a> 函数，能够根据该快照主动恢复线程，类似于 <code>glibc</code> 的 <code>setcontext</code>，而 <code>QUIT</code> 环境变量正是 <code>quit</code> 的地址。<br>在初始化文件日志后，先令当前线程屏蔽所有信号，之后启动的所有子线程都会继承该设置。然后从 <code>ELF</code> 的 <code>section</code> 中加载符号表、编译信息以及 <code>interface</code> 表，并且为了支持阻断功能，查找 <code>errors.(*errorString)</code> 的地址并保存。执行 <code>gSmithProbe-&gt;start()</code> 启动通信客户端后，从符号表中查找 <code>GOLANG_API</code> 所有子项，并进行 <code>Inline Hook</code>。完成以上流程后，恢复信号掩码并调用 <code>quit</code> 函数以通知 <code>pangolin</code> 结束注入。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2022/02/28/Elkeid-Golang-RASP/" data-id="clogx15kd00019tt2hqv08q1q" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Nokia 7P 刷机
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Node.js进程注入</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

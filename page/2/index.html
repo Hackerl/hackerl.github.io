@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="Hello World">
+<meta property="og:url" content="https://hackerl.github.io/page/2/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:locale" content="en_US">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main">
+  
+    <article id="post-软路由折腾记录一" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/" class="article-date">
+  <time datetime="2020-09-11T03:43:17.000Z" itemprop="datePublished">2020-09-11</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/">软路由折腾记录一</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="透明代理"><a href="#透明代理" class="headerlink" title="透明代理"></a>透明代理</h2><p>在购买了小主机J1900之后, 我在上面安装了OpenWrt, 一切都很正常, 我搭建了Clash, 配置了iptables使TCP/UDP走透明代理.</p>
+<h3 id="TCP透明代理"><a href="#TCP透明代理" class="headerlink" title="TCP透明代理"></a>TCP透明代理</h3><p>TCP透明代理比较简单, 因为TCP有状态, 所以透明代理成本较低, iptables提供重定向操作.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -A CLASH -p tcp -j REDIRECT --to-ports 7892</span><br></pre></td></tr></table></figure>
+<p>规则将tcp所有流量重定向到本地7892, iptables只需要在SYN包时记录下原始目标地址, 7892端口accept之后通过”SO_ORIGINAL_DST”即可拿到原始目标地址.</p>
+<h3 id="UDP透明代理"><a href="#UDP透明代理" class="headerlink" title="UDP透明代理"></a>UDP透明代理</h3><p>UDP没有状态, 所以想和TCP进行透明代理是不可能的, 每个连接都像TCP一样保存原始目标地址, 成本较大.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">iptables -t mangle -A CLASH -p udp -j TPROXY --on-port 7892 --tproxy-mark 0x111</span><br><span class="line">ip rule add fwmark 0x111 table 0x162</span><br><span class="line">ip route add local 0.0.0.0/0 dev lo table 0x162</span><br></pre></td></tr></table></figure>
+<p>UDP透明代理需要三条规则, 第一条使用iptables提供的tproxy模块, 将udp流量重定向到本地7892端口. 比较有意思的是tproxy不修改报文, 但是依旧可以完成重定向任务. 在报文匹配这条规则时, tproxy会查找本地是否开启7892端口, 并且该socket是否设置了”IP_TRANSPARENT”属性, 如果符合则将socket与报文做关联, 修改报文的结构体(skb-&gt;sock=sk).<br>但是在报文不做修改的情况下, 因为目的地址不是本机, 所以路由选择的时候, 该报文会被forward而不会进入本地协议栈进行处理, 那么关联socket的修改就没有意义了. 所以后面两条路由规则, 就是将报文送入本地协议栈进行处理.<br>tproxy会给每个匹配的报文打上标记”0x111”, 第二条路由规则表示带有”0x111”标记的报文使用”0x162”路由表. 第三条创建”0x162”路由表, 表里的规则将流量本地回环网卡lo, 这样流量顺利进入协议栈, 并且关联修改让它顺利被7892端口接收.</p>
+<h4 id="example"><a href="#example" class="headerlink" title="example"></a>example</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;memory.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> server_fd, ret;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">ser_addr</span>;</span></span><br><span class="line"></span><br><span class="line">    server_fd = socket(AF_INET, SOCK_DGRAM, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(server_fd &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;create socket fail!\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> enable = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (setsockopt(server_fd, SOL_IP, IP_RECVORIGDSTADDR, (<span class="keyword">const</span> <span class="keyword">char</span>*)&amp;enable, <span class="keyword">sizeof</span>(enable)) != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;set socket op fail!\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (setsockopt(server_fd, SOL_IP, IP_TRANSPARENT, (<span class="keyword">const</span> <span class="keyword">char</span>*)&amp;enable, <span class="keyword">sizeof</span>(enable)) != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;set socket op fail!\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">memset</span>(&amp;ser_addr, <span class="number">0</span>, <span class="keyword">sizeof</span>(ser_addr));</span><br><span class="line"></span><br><span class="line">    ser_addr.sin_family = AF_INET;</span><br><span class="line">    ser_addr.sin_addr.s_addr = htonl(INADDR_ANY);</span><br><span class="line">    ser_addr.sin_port = htons(<span class="number">7892</span>);</span><br><span class="line"></span><br><span class="line">    ret = bind(server_fd, (struct sockaddr*)&amp;ser_addr, <span class="keyword">sizeof</span>(ser_addr));</span><br><span class="line">    <span class="keyword">if</span>(ret &lt; <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;socket bind fail!\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">char</span> buffer[<span class="number">256</span>];</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> bytes[<span class="number">16</span>*<span class="number">1024</span>];</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">srcIpAddr</span>, <span class="title">dstIpAddr</span>;</span></span><br><span class="line">    <span class="keyword">int</span> dstPort;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iovec</span> <span class="title">iov</span>;</span></span><br><span class="line"></span><br><span class="line">    iov.iov_base = bytes;</span><br><span class="line">    iov.iov_len = <span class="keyword">sizeof</span>(bytes)<span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">msghdr</span> <span class="title">mh</span>;</span></span><br><span class="line"></span><br><span class="line">    mh.msg_name = &amp;srcIpAddr;</span><br><span class="line">    mh.msg_namelen = <span class="keyword">sizeof</span>(struct sockaddr_in);</span><br><span class="line">    mh.msg_control = buffer;</span><br><span class="line">    mh.msg_controllen = <span class="number">100</span>;</span><br><span class="line">    mh.msg_iovlen = <span class="number">1</span>;</span><br><span class="line">    mh.msg_iov = &amp;iov;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> res = recvmsg(server_fd, &amp;mh, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (res &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;recv msg failed&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(struct cmsghdr *msg = CMSG_FIRSTHDR(&amp;mh); msg != <span class="literal">NULL</span>; msg = CMSG_NXTHDR(&amp;mh, msg))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>(msg-&gt;cmsg_level != SOL_IP || msg-&gt;cmsg_type != IP_ORIGDSTADDR)</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="built_in">memcpy</span>(&amp;dstIpAddr, CMSG_DATA(msg), <span class="keyword">sizeof</span>(struct sockaddr_in));</span><br><span class="line">        dstPort = ntohs(dstIpAddr.sin_port);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">char</span> str[INET_ADDRSTRLEN];</span><br><span class="line">        inet_ntop(AF_INET, &amp;(dstIpAddr.sin_addr), str, INET_ADDRSTRLEN);</span><br><span class="line"></span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%s:%d&quot;</span>, str, dstPort);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Docker"><a href="#Docker" class="headerlink" title="Docker"></a>Docker</h2><p>简单的翻墙使用, 让我觉得浪费了J1900的性能, 我突发奇想, 我想在上面装Docker! 当我在google反复搜索, 貌似出来的答案都是Docker里面装OpenWrt, 没有人在OpenWrt上装Docker, 唯一有价值的帖子是这篇<a target="_blank" rel="noopener" href="https://forum.openwrt.org/t/docker-engine-on-openwrt/12891">Docker engine on OpenWrt</a>.<br>Docker现在只存在于<a target="_blank" rel="noopener" href="https://github.com/openwrt/packages/tree/master/utils/docker-ce">master</a>分支, 如果想用需要自己编译, 于是我开始搭环境进行编译.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">git clone https://git.openwrt.org/openwrt/openwrt.git</span><br><span class="line">cd openwrt</span><br><span class="line">./scripts/feeds update -a</span><br><span class="line">./scripts/feeds install -a</span><br><span class="line">make menuconfig</span><br><span class="line">make -j8 download</span><br><span class="line">make -j8</span><br></pre></td></tr></table></figure>
+<p>编译会遇到很多坑, 也和网络环境有关, 因为编译会下载大量的源码, 所以我全程使用了proxychains.</p>
+<h3 id="组件"><a href="#组件" class="headerlink" title="组件"></a>组件</h3><p>make menuconfig时会让你选择组件, 此时我很自然的只勾选了docker-ce, 然而编译的结果是整个系统只有docker-ce! 自己编译是不会有软件源的, 因为内核版本不兼容, 你从OpenWrt的<a target="_blank" rel="noopener" href="https://downloads.openwrt.org/snapshots/targets/">Snapshot源</a>(官方dev源, 每天自动编译)下载的包是装不上, 所以连iptables-mod-tproxy都没有.<br>我勾选了tproxy模块重新编译后, 发现自带的web UI没有, 我开始暴躁了起来. 最后我发现官方发出的稳定版本会附上编译时的配置, 所以在make menuconfig之前先下载下来:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl https://downloads.openwrt.org/releases/19.07.3/targets/x86/64/config.buildinfo &gt; .config</span><br></pre></td></tr></table></figure>
+<p>再进行make menuconfig会在官方的配置上进行定制, 我勾选了所需要的模块, 编译进行的很顺利.</p>
+<h3 id="代理"><a href="#代理" class="headerlink" title="代理"></a>代理</h3><p>我习惯使用proxychains进行代理, 它使用LD_PRELOAD进行socket相关的hook, 支持TCP/UDP. 不过在编译Python3时, 出现了错误:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Fatal: You must get working getaddrinfo() function.</span><br><span class="line">       or you can specify &quot;--disable-ipv6&quot;.</span><br></pre></td></tr></table></figure>
+<p>搜索之后发现是<a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1198256">proxychains的问题</a>, 但是我没有详细探究原因, 我转而使用:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export http_proxy=&quot;http://127.0.0.1:8080&quot;</span><br><span class="line">export https_proxy=&quot;http://127.0.0.1:8080&quot;</span><br></pre></td></tr></table></figure>
+<p>因为编译的下载大多都会使用该环境变量, 所以也没有发生下载缓慢的问题.</p>
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><p>之前的文章已经写了详细安装过程, 这里不赘述了, 使用时发现了两个问题.</p>
+<ul>
+<li>无法使用官方源, 要安装screen等软件需要自行编译</li>
+<li>Docker可正常使用, tproxy无法正常工作</li>
+</ul>
+<p>第一个问题完全可以忍受, 因为编译后的目录结构与官方源完全相同, 所以可以上传到自己的VPS, 然后修改opkg配置文件, 使用自建源. 第二个问题相当诡异, 调试了几天依旧找不到原因, 我一度以为是OpenWrt的bug, 甚至发朋友圈怒斥之.</p>
+<h2 id="转变"><a href="#转变" class="headerlink" title="转变"></a>转变</h2><p>最后我起了个念头, 我想把系统换成Debian, 通过DIV将它改造成软路由. 大概想了一下, 无非是搭建DNS/DHCP, 桥接网卡、开启ip中转, 设置iptables的DNAT规则. 我重新燃起了热情, 为即将可以使用舒适稳定的系统而躁动不安, 此时的我显然没有意识到有一个bug在前方等待着我.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/" data-id="clogx15kg000c9tt23ph852lc" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-JVM-Probe技术" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/" class="article-date">
+  <time datetime="2020-08-31T10:14:36.000Z" itemprop="datePublished">2020-08-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/">JVM Probe技术</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>JVM提供动态attach机制, 支持动态注入jar包.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.security.smith;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AgentInitializationException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AgentLoadException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AttachNotSupportedException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.VirtualMachine;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AgentLoader</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (args.length != <span class="number">2</span>) &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;usage: program &lt;pid&gt; &lt;jar&gt;&quot;</span>);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String pid = args[<span class="number">0</span>];</span><br><span class="line">        String jarPath = args[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;pid: &quot;</span> + pid + <span class="string">&quot; jar: &quot;</span> + jarPath);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            VirtualMachine vm = VirtualMachine.attach(pid);</span><br><span class="line"></span><br><span class="line">            vm.loadAgent(jarPath);</span><br><span class="line">            vm.detach();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>使用方法如上, attach的过程分为3步:</p>
+<ul>
+<li>检查临时目录下是否有.java_pid{pid} unix socket文件</li>
+<li>没有则创建.attach_pid{pid}文件, 给目标进程发送信号3</li>
+<li>目标进程JVM虚拟机收到信号, 创建.java_pid{pid} unix socket文件</li>
+</ul>
+<p>基于unix socket, 可以给JVM发送指令, 例如”load”指令可以加载.so文件, VirtualMachine.loadAgent也是基于load指令实现的. loadAgent内部发送”load”指令, 使JVM加载自带的”.so”, 动态库内部加载参数指定的jar包.<br>jar包的MANIFEST.MF需要提供必要参数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Manifest-Version: 1.0</span><br><span class="line">Agent-Class: com.security.smith.SmithAgent</span><br><span class="line">Can-Retransform-Classes: true</span><br><span class="line">Boot-Class-Path: SmithAgent.jar</span><br></pre></td></tr></table></figure>
+<p>Agent-Class指定入口Class, 该Class需要实现入口方法:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithAgent</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">agentmain</span><span class="params">(String agentArgs, Instrumentation inst)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Hook"><a href="#Hook" class="headerlink" title="Hook"></a>Hook</h2><p>Instrumentation类提供一系列功能:</p>
+<ol>
+<li>ClassFileTransformer用于拦截类加载事件, 需要注册到Instrumentation</li>
+<li>Instrumentation.redefineClasses<ul>
+<li>针对已加载的类, 舍弃原本的字节码, 替换为由用户提供的byte数组</li>
+<li>功能比较危险, 一般用于修复出错的字节码</li>
+</ul>
+</li>
+<li>Instrumentation.retransformClasses<ul>
+<li>针对已加载的类, 重新调用所有已注册的ClassFileTransformer的transform方法, 两个场景</li>
+<li>在执行premain和agentmain方法前, JVM已经加载了不少类<ul>
+<li>而这些类的加载事件并没有被拦截并执行相关的注入逻辑</li>
+</ul>
+</li>
+<li>定义了多个Java Agent, 多个注入的情况, 可能需要移除其中的部分注入<ul>
+<li>调用Instrumentation.removeTransformer去除某个注入类后, 可以调用retransformClasses</li>
+<li>重新从原始byte数组开始进行注入</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Java Agent的功能是通过JVMTI Agent(C Agent), JVMTI是一个事件驱动的工具实现接口<ul>
+<li>通常会在C Agent加载后的方法入口Agent_OnLoad处注册各种事件的钩子方法</li>
+<li>当JVM触发这些事件时, 便会调用对应的钩子方法</li>
+<li>例如可以为JVMTI中的ClassFileLoadHook事件设置钩子, 从而在C层面拦截所有的类加载事件</li>
+</ul>
+</li>
+</ol>
+<p>使用Instrumentation可以添加Class拦截器, 在Class加载时能够插入或修改字节码, 达到控制整个Class的目的. 对于已经加载的Class, 可以使用retransformClasses强行重载Class, 拦截器便能对重载的Class进行拦截.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        inst.addTransformer(<span class="keyword">this</span>, <span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            inst.retransformClasses(Runtime.class);</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (UnmodifiableClassException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">byte</span>[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined, ProtectionDomain protectionDomain, <span class="keyword">byte</span>[] classfileBuffer) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>classfileBuffer就是目标Class的字节码流, 使用asm等库可以解析字节码并篡改, 返回篡改后的字节码流即可篡改Class, 返回null则示意JVM加载原本的字节码.</p>
+<h2 id="JVM函数调用"><a href="#JVM函数调用" class="headerlink" title="JVM函数调用"></a>JVM函数调用</h2><p>JVM函数调用基于栈, 例如调用Runtime.exec, 需要依次将类实例引用, exec的函数参数推出栈, 伪代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 假定类实例存在寄存器1中, 将寄存器1的值推入栈</span><br><span class="line">ALOAD 1</span><br><span class="line"># 将字符串&quot;ls&quot;推入栈</span><br><span class="line">LDC &quot;ls&quot;</span><br><span class="line"># 调用函数, 因为Java支持重载, 需要指定参数签名</span><br><span class="line">INVOKEVIRTUAL Runtime.exec (Ljava&#x2F;lang&#x2F;String;)Ljava&#x2F;lang&#x2F;Process;</span><br></pre></td></tr></table></figure>
+<p>而进入函数之后, JVM自动根据参数个数, 帮方法将参数放入寄存器(0+), 所以方法内获取参数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 获取类实例, 静态方法无实例, 所以0寄存器保存的是第一个参数</span><br><span class="line">ALOAD 0</span><br><span class="line"># 获取字符串参数&quot;ls&quot;</span><br><span class="line">ALOAD 1</span><br></pre></td></tr></table></figure>
+<h2 id="设计"><a href="#设计" class="headerlink" title="设计"></a>设计</h2><p>根据上面分析, 要将函数调用的参数信息传出, 只需要在每个函数的开头插入一段字节码, 但是字节码需要动态生成. 没有一段字节码能够搞定所有函数, 因为每个函数的参数个数以及类型都不同. 所以Hook还是需要我们设定好函数的参数类型以及签名.<br>例如针对Runtime.exe(String), 我们设定函数信息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java&#x2F;lang&#x2F;Runtime VIRTUAL_METHOD_TYPE exec &#123;&quot;string&quot;&#125;</span><br></pre></td></tr></table></figure>
+<p>那么在对Class进行拦截时, 我们可以根据上面的设定Hook函数, 根据VIRTUAL_METHOD_TYPE我们知道exec的参数从寄存器1开始, 根据{“string”}我们知道参数有1个, 并且是string类型, 这时候我们只需要插入一段字节码在exec的开头:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 获取参数</span><br><span class="line">ALOAD 1</span><br><span class="line">INVOKESTATIC com&#x2F;security&#x2F;smith&#x2F;SmithProbe.trace (Ljava&#x2F;lang&#x2F;String;)V</span><br></pre></td></tr></table></figure>
+<p>两个字节码就可以获取函数调用信息, 第一行将参数推入栈, 第二行调用我们编写好的方法:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">trace</span><span class="params">(String arg)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上只是一个简单的例子, trace方法我们不能简单的写定参数, 因为每个Hook的函数传进来的参数都不一样. 所以我会在Hook时, 将目标函数的参数推入Object[], 然后传到trace里面来. 另外需要标识是什么类的什么方法调用的trace, 可以在生成字节码时, 给每个调用分配一个id.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">trace</span><span class="params">(<span class="keyword">int</span> classID, <span class="keyword">int</span> methodID, Object... args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面是我定义的函数原型, 仅供参考.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/" data-id="clogx15ke00039tt27c2i9sjh" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-搭建OpenWrt软路由" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/" class="article-date">
+  <time datetime="2020-08-10T08:31:14.000Z" itemprop="datePublished">2020-08-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/">搭建OpenWrt软路由</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>一直以来, 都想在路由器上搭建机场, 不用在每台设备上都安装小飞机. 看了一下路由器, 基本上都是华硕路由器刷梅林固件, 因为价格过高以及我大部分时间使用有线网络的原因, 购买一个新的路由器并没有必要.<br>无意中看到了软路由这个词, 搜索之后得知, 软路由其实就是基于CPU散片组装的小型PC, 在上面安装OpenWrt等系统, 就可以进行路由转发. 在上面有很多插件, 可以方便的搭建透明代理. 于是当天在淘宝上购买了基于J1900的软路由, 到家之后立刻开始折腾.</p>
+<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><p>在OpenWrt官网下载了img镜像, 准备好Arch Linux的PE盘, 选择Arch是因为镜像小, 下载和烧录迅速. 把软路由接好显示器, 插入U盘, 按下电源键, 默认就优先进入了U盘引导. Arch Linux启动后, 再插入包含OpenWrt镜像的U盘, 或者直接使用curl下载.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dd if=openwrt.img of=/dev/sda</span><br></pre></td></tr></table></figure>
+<p>使用dd命令将镜像直接写入软路由硬盘, 此时如果重启就可以直接进入OpenWrt系统了. 但这里有个坑需要注意, 不管你的软路由的硬盘有多大, 重启后你就会发现rootfs只有200M+的空间. 因为dd写入镜像, 分区表等信息都和镜像一样, 镜像的ext4分区默认只有200M+. 所以要使用PE系统重建分区, 因为OpenWrt运行时不可以对自身的分区进行修改.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 对sda进行分区扩展</span></span><br><span class="line">root@OpenWrt:~# sudo fdisk /dev/sda</span><br><span class="line">Welcome to fdisk (util-linux 2.32). </span><br><span class="line">Changes will remain in memory only, until you decide to write them.</span><br><span class="line">Be careful before using the write command.</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 p 显示分区信息</span></span><br><span class="line">Command (m for help): p</span><br><span class="line">Disk /dev/sda: 7.2 GiB, 7751073792 bytes, 15138816 sectors</span><br><span class="line">Units: sectors of 1 * 512 = 512 bytes</span><br><span class="line">Sector size (logical/physical): 512 bytes / 512 bytes</span><br><span class="line">I/O size (minimum/optimal): 512 bytes / 512 bytes</span><br><span class="line">Disklabel type: dos</span><br><span class="line">Disk identifier: 0xcbad8a62</span><br><span class="line"></span><br><span class="line">Device     Boot Start    End Sectors  Size Id Type</span><br><span class="line">/dev/sda1  *      512  33279   32768   16M 83 Linux</span><br><span class="line">/dev/sda2       33792 558079  524288  256M 83 Linux</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 d 删除 第二个分区，这里记录下第二个分区的起点是33792</span></span><br><span class="line">Command (m for help): d</span><br><span class="line">Partition number (1,2, default 2): </span><br><span class="line"></span><br><span class="line">Partition 2 has been deleted.</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 n 创建新的分区</span></span><br><span class="line">Command (m for help): n</span><br><span class="line">Partition type</span><br><span class="line"> p   primary (1 primary, 0 extended, 3 free)</span><br><span class="line"> e   extended (container for logical partitions)</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 p 确认是主分区</span></span><br><span class="line">Select (default p): p</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入分区id 用默认的2</span></span><br><span class="line">Partition number (2-4, default 2): 2</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 分区起始位置(就是原来分区2起始的位置)</span></span><br><span class="line">First sector (33280-15138815, default 34816): 33792</span><br><span class="line"><span class="meta">#</span><span class="bash"> 这里直接回车，默认选择终止位置就是硬盘的末尾</span></span><br><span class="line">Last sector, +sectors or +size&#123;K,M,G,T,P&#125; (33792-15138815, default 15138815): </span><br><span class="line"></span><br><span class="line">Created a new partition 2 of type &#x27;Linux&#x27; and of size 7.2 GiB.</span><br><span class="line">Partition #2 contains a ext4 signature.</span><br><span class="line"></span><br><span class="line">Do you want to remove the signature? [Y]es/[N]o: n</span><br><span class="line"><span class="meta">#</span><span class="bash"> 输入 w ，写入硬盘， 这里可能会有一个warning，忽略即可</span></span><br><span class="line">Command (m for help): w</span><br><span class="line"></span><br><span class="line">The partition table has been altered.</span><br><span class="line">Syncing disks.</span><br></pre></td></tr></table></figure>
+<p>此时分区大小扩展了, 但是上面的ext4还没有扩容:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resize2fs /dev/sda2</span><br><span class="line">e2fsck -f /dev/sda2</span><br></pre></td></tr></table></figure>
+<p>执行上面的命令完成rootfs扩容, 重启即可进入OpenWrt.</p>
+<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><p>进入系统后执行:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat /etc/config/network</span><br></pre></td></tr></table></figure>
+<p>查看网卡配置:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">config interface &#39;loopback&#39;</span><br><span class="line">        option ifname &#39;lo&#39;</span><br><span class="line">        option proto &#39;static&#39;</span><br><span class="line">        option ipaddr &#39;127.0.0.1&#39;</span><br><span class="line">        option netmask &#39;255.0.0.0&#39;</span><br><span class="line"></span><br><span class="line">config globals &#39;globals&#39;</span><br><span class="line">        option ula_prefix &#39;fddb:f68c:5cd8::&#x2F;48&#39;</span><br><span class="line"></span><br><span class="line">config interface &#39;lan&#39;</span><br><span class="line">        option type &#39;bridge&#39;</span><br><span class="line">        option ifname &#39;eth0&#39;</span><br><span class="line">        option proto &#39;static&#39;</span><br><span class="line">        option ipaddr &#39;192.168.1.1&#39;</span><br><span class="line">        option netmask &#39;255.255.255.0&#39;</span><br><span class="line">        option ip6assign &#39;60&#39;</span><br><span class="line"></span><br><span class="line">config interface &#39;wan&#39;</span><br><span class="line">        option ifname &#39;eth1&#39;</span><br><span class="line">        option proto &#39;dhcp&#39;</span><br><span class="line"></span><br><span class="line">config interface &#39;wan6&#39;</span><br><span class="line">        option ifname &#39;eth1&#39;</span><br><span class="line">        option proto &#39;dhcpv6&#39;</span><br></pre></td></tr></table></figure>
+<p>可以看到wan口配置在eth1, 也就是第二个网线插口, 从光猫牵线插入wan口即可获取动态IP, 此时OpenWrt已经成功联网. 另外eth0也就是第一个网线插口配置成了lan, 将电脑或路由器插上去即可获取IP. 此时用电脑浏览器访问192.168.1.1(可手动修改配置), 登录OpenWrt配置页面.</p>
+<h2 id="Clash"><a href="#Clash" class="headerlink" title="Clash"></a>Clash</h2><p>安装了clash之后, 可以顺利的科学上网, 可是当我执行:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">PING baidu.com (198.18.1.115) 56(84) bytes of data.</span><br><span class="line">--- baidu.com ping statistics ---</span><br><span class="line">3 packets transmitted, 0 received, 100% packet loss, time 4ms</span><br></pre></td></tr></table></figure>
+<p>域名baidu.com被解析到了一个保留地址, 可是此时我的系统可以正常联网, 于是我开始探索这种被称为Fake IP的机制. Clash自带DNS服务器, 监听127.0.0.1:5300, 通过设置dnsmasq的server字段, 将所有DNS请求转发到自身服务.<br>然后通过建立一个虚拟IP与实际域名的映射表, 随机返回一个IP(198.18.0.1/16). 客户端收到响应后, 与该IP建立TCP/UDP连接, 而Clash通过添加IPTables规则, 将目标IP属于198.18.0.1/16的请求转发到Clash的Redir Port(7892). 此时Clash可以查询IP对应的域名, 进行透明代理.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/" data-id="clogx15kg000b9tt2ah1m7442" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-Nginx反向代理SNI问题溯源" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/" class="article-date">
+  <time datetime="2020-08-05T06:30:57.000Z" itemprop="datePublished">2020-08-05</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/">Nginx反向代理SNI问题溯源</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>我开发了一个Nginx通用代理服务, 将目标url进行加密生成jwt, 存放于url参数中.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">target url: https:&#x2F;&#x2F;baidu.com</span><br><span class="line">jwt payload: &#123;&quot;target&quot;: &quot;https:&#x2F;&#x2F;baidu.com&quot;&#125;</span><br><span class="line">jwt: jwt_example</span><br><span class="line">url: proxy.example.com?token&#x3D;jwt_example</span><br></pre></td></tr></table></figure>
+<p>当访代理服务时, nginx将获取jwt并解密, 验证token是否过期, 并取出payload中的目标url, 使用proxy_pass进行转发即可. 这种模式非常通用, 适用于资源加速, 隐藏真正的资源地址等用途. 开发完成之后, 运行一直正常, 我一直用来代理某个国外网站的视频资源.</p>
+<p>直到最近才发生了错误, 查看nginx日志:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SSL_do_handshake() failed (SSL: error:1408F10B:SSL routines:ssl3_get_record:wrong version number) while SSL handshaking to upstream.</span><br></pre></td></tr></table></figure>
+<h2 id="错误"><a href="#错误" class="headerlink" title="错误"></a>错误</h2><p>从错误日志可以看出来是SSL握手失败, target url的确是HTTPS的协议, 但是为什么到最近才会出现错误, 之前一直运行正常. 我尝试将target url的协议改成HTTP, 则可以正常代理, 而在访问了HTTP之后再访问HTTPS则正常, 这的确十分诡异. 后来我意识到这其实是因为我开了缓存, 当第一次访问HTTP会将资源缓存下载, 之后代理HTTPS则不会再进行请求, 只是简单的读取缓存.</p>
+<h2 id="抓包"><a href="#抓包" class="headerlink" title="抓包"></a>抓包</h2><p>当一切都没有头绪的时候, 我开始使用tcpdump进行抓包, 在期间我正常访问并复现错误, 并且使用curl正常访问target url一次. 然后使用wireshark分析pcap文件, wireshark能够清晰有层次的展示出网络报文结构, 包括SSL各个字段意义. 通过观察网络数据, 我发现在发出第一个Client Hello之后, 握手便中断了, 我猜测应该是某个字段遗漏或者填写错误.</p>
+<p>所以我提取了nginx/curl两者的Client Hello, 进行详细对比.</p>
+<p>nginx client hello:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br></pre></td><td class="code"><pre><span class="line">Transport Layer Security</span><br><span class="line">    TLSv1 Record Layer: Handshake Protocol: Client Hello</span><br><span class="line">        Content Type: Handshake (22)</span><br><span class="line">        Version: TLS 1.0 (0x0301)</span><br><span class="line">        Length: 278</span><br><span class="line">        Handshake Protocol: Client Hello</span><br><span class="line">            Handshake Type: Client Hello (1)</span><br><span class="line">            Length: 274</span><br><span class="line">            Version: TLS 1.2 (0x0303)</span><br><span class="line">            Random: 1f9c1eb1a9e8a36ff7d953967bc0c887bd56b2052552befb…</span><br><span class="line">                GMT Unix Time: Oct 22, 1986 08:32:49.000000000 CST</span><br><span class="line">                Random Bytes: a9e8a36ff7d953967bc0c887bd56b2052552befb0400350f…</span><br><span class="line">            Session ID Length: 32</span><br><span class="line">            Session ID: ee143acbaedee8fb98b1dc3d6b90bdedc03cef516d463a55…</span><br><span class="line">            Cipher Suites Length: 62</span><br><span class="line">            Cipher Suites (31 suites)</span><br><span class="line">                Cipher Suite: TLS_AES_256_GCM_SHA384 (0x1302)</span><br><span class="line">                Cipher Suite: TLS_CHACHA20_POLY1305_SHA256 (0x1303)</span><br><span class="line">                Cipher Suite: TLS_AES_128_GCM_SHA256 (0x1301)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (0xc02c)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (0xc030)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 (0x009f)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 (0xcca9)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (0xcca8)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (0xccaa)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xc02b)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (0xc02f)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 (0x009e)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 (0xc024)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 (0xc028)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 (0x006b)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 (0xc023)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 (0xc027)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 (0x0067)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (0xc00a)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (0xc014)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA (0x0039)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (0xc009)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (0xc013)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA (0x0033)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_GCM_SHA384 (0x009d)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_GCM_SHA256 (0x009c)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_CBC_SHA256 (0x003d)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_CBC_SHA256 (0x003c)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_CBC_SHA (0x0035)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_CBC_SHA (0x002f)</span><br><span class="line">                Cipher Suite: TLS_EMPTY_RENEGOTIATION_INFO_SCSV (0x00ff)</span><br><span class="line">            Compression Methods Length: 1</span><br><span class="line">            Compression Methods (1 method)</span><br><span class="line">                Compression Method: null (0)</span><br><span class="line">            Extensions Length: 139</span><br><span class="line">            Extension: ec_point_formats (len&#x3D;4)</span><br><span class="line">                Type: ec_point_formats (11)</span><br><span class="line">                Length: 4</span><br><span class="line">                EC point formats Length: 3</span><br><span class="line">                Elliptic curves point formats (3)</span><br><span class="line">            Extension: supported_groups (len&#x3D;12)</span><br><span class="line">                Type: supported_groups (10)</span><br><span class="line">                Length: 12</span><br><span class="line">                Supported Groups List Length: 10</span><br><span class="line">                Supported Groups (5 groups)</span><br><span class="line">            Extension: session_ticket (len&#x3D;0)</span><br><span class="line">                Type: session_ticket (35)</span><br><span class="line">                Length: 0</span><br><span class="line">                Data (0 bytes)</span><br><span class="line">            Extension: encrypt_then_mac (len&#x3D;0)</span><br><span class="line">                Type: encrypt_then_mac (22)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: extended_master_secret (len&#x3D;0)</span><br><span class="line">                Type: extended_master_secret (23)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: signature_algorithms (len&#x3D;42)</span><br><span class="line">                Type: signature_algorithms (13)</span><br><span class="line">                Length: 42</span><br><span class="line">                Signature Hash Algorithms Length: 40</span><br><span class="line">                Signature Hash Algorithms (20 algorithms)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp256r1_sha256 (0x0403)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp384r1_sha384 (0x0503)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp521r1_sha512 (0x0603)</span><br><span class="line">                    Signature Algorithm: ed25519 (0x0807)</span><br><span class="line">                    Signature Algorithm: ed448 (0x0808)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha256 (0x0809)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha384 (0x080a)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha512 (0x080b)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha256 (0x0804)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha384 (0x0805)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha512 (0x0806)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha256 (0x0401)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha384 (0x0501)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha512 (0x0601)</span><br><span class="line">                    Signature Algorithm: SHA224 ECDSA (0x0303)</span><br><span class="line">                    Signature Algorithm: SHA224 RSA (0x0301)</span><br><span class="line">                    Signature Algorithm: SHA224 DSA (0x0302)</span><br><span class="line">                    Signature Algorithm: SHA256 DSA (0x0402)</span><br><span class="line">                    Signature Algorithm: SHA384 DSA (0x0502)</span><br><span class="line">                    Signature Algorithm: SHA512 DSA (0x0602)</span><br><span class="line">            Extension: supported_versions (len&#x3D;5)</span><br><span class="line">                Type: supported_versions (43)</span><br><span class="line">                Length: 5</span><br><span class="line">                Supported Versions length: 4</span><br><span class="line">                Supported Version: TLS 1.3 (0x0304)</span><br><span class="line">                Supported Version: TLS 1.2 (0x0303)</span><br><span class="line">            Extension: psk_key_exchange_modes (len&#x3D;2)</span><br><span class="line">                Type: psk_key_exchange_modes (45)</span><br><span class="line">                Length: 2</span><br><span class="line">                PSK Key Exchange Modes Length: 1</span><br><span class="line">                PSK Key Exchange Mode: PSK with (EC)DHE key establishment (psk_dhe_ke) (1)</span><br><span class="line">            Extension: key_share (len&#x3D;38)</span><br><span class="line">                Type: key_share (51)</span><br><span class="line">                Length: 38</span><br><span class="line">                Key Share extension</span><br><span class="line">                    Client Key Share Length: 36</span><br><span class="line">                    Key Share Entry: Group: x25519, Key Exchange length: 32</span><br><span class="line">                        Group: x25519 (29)</span><br><span class="line">                        Key Exchange Length: 32</span><br><span class="line">                        Key Exchange: 4f2de7db6676fb0bd1414fe7a39c7b0b9de762faf020f1db…</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>curl client hello:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br></pre></td><td class="code"><pre><span class="line">Transport Layer Security</span><br><span class="line">    TLSv1.2 Record Layer: Handshake Protocol: Client Hello</span><br><span class="line">        Content Type: Handshake (22)</span><br><span class="line">        Version: TLS 1.0 (0x0301)</span><br><span class="line">        Length: 512</span><br><span class="line">        Handshake Protocol: Client Hello</span><br><span class="line">            Handshake Type: Client Hello (1)</span><br><span class="line">            Length: 508</span><br><span class="line">            Version: TLS 1.2 (0x0303)</span><br><span class="line">            Random: a7b82c9ca56d16f7a2185220dda1738524d36f863807571a…</span><br><span class="line">                GMT Unix Time: Mar  3, 2059 05:11:56.000000000 CST</span><br><span class="line">                Random Bytes: a56d16f7a2185220dda1738524d36f863807571a04287add…</span><br><span class="line">            Session ID Length: 32</span><br><span class="line">            Session ID: 49e609bb364d985ddead6c63ef722cc2289f68673155a8a5…</span><br><span class="line">            Cipher Suites Length: 62</span><br><span class="line">            Cipher Suites (31 suites)</span><br><span class="line">                Cipher Suite: TLS_AES_256_GCM_SHA384 (0x1302)</span><br><span class="line">                Cipher Suite: TLS_CHACHA20_POLY1305_SHA256 (0x1303)</span><br><span class="line">                Cipher Suite: TLS_AES_128_GCM_SHA256 (0x1301)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (0xc02c)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (0xc030)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 (0x009f)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 (0xcca9)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (0xcca8)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (0xccaa)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (0xc02b)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (0xc02f)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 (0x009e)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 (0xc024)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 (0xc028)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 (0x006b)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 (0xc023)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 (0xc027)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 (0x0067)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (0xc00a)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (0xc014)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA (0x0039)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (0xc009)</span><br><span class="line">                Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (0xc013)</span><br><span class="line">                Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA (0x0033)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_GCM_SHA384 (0x009d)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_GCM_SHA256 (0x009c)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_CBC_SHA256 (0x003d)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_CBC_SHA256 (0x003c)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_256_CBC_SHA (0x0035)</span><br><span class="line">                Cipher Suite: TLS_RSA_WITH_AES_128_CBC_SHA (0x002f)</span><br><span class="line">                Cipher Suite: TLS_EMPTY_RENEGOTIATION_INFO_SCSV (0x00ff)</span><br><span class="line">            Compression Methods Length: 1</span><br><span class="line">            Compression Methods (1 method)</span><br><span class="line">                Compression Method: null (0)</span><br><span class="line">            Extensions Length: 373</span><br><span class="line">            Extension: server_name (len&#x3D;21)</span><br><span class="line">                Type: server_name (0)</span><br><span class="line">                Length: 21</span><br><span class="line">                Server Name Indication extension</span><br><span class="line">            Extension: ec_point_formats (len&#x3D;4)</span><br><span class="line">                Type: ec_point_formats (11)</span><br><span class="line">                Length: 4</span><br><span class="line">                EC point formats Length: 3</span><br><span class="line">                Elliptic curves point formats (3)</span><br><span class="line">            Extension: supported_groups (len&#x3D;12)</span><br><span class="line">                Type: supported_groups (10)</span><br><span class="line">                Length: 12</span><br><span class="line">                Supported Groups List Length: 10</span><br><span class="line">                Supported Groups (5 groups)</span><br><span class="line">            Extension: next_protocol_negotiation (len&#x3D;0)</span><br><span class="line">                Type: next_protocol_negotiation (13172)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: application_layer_protocol_negotiation (len&#x3D;14)</span><br><span class="line">                Type: application_layer_protocol_negotiation (16)</span><br><span class="line">                Length: 14</span><br><span class="line">                ALPN Extension Length: 12</span><br><span class="line">                ALPN Protocol</span><br><span class="line">            Extension: encrypt_then_mac (len&#x3D;0)</span><br><span class="line">                Type: encrypt_then_mac (22)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: extended_master_secret (len&#x3D;0)</span><br><span class="line">                Type: extended_master_secret (23)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: post_handshake_auth (len&#x3D;0)</span><br><span class="line">                Type: post_handshake_auth (49)</span><br><span class="line">                Length: 0</span><br><span class="line">            Extension: signature_algorithms (len&#x3D;42)</span><br><span class="line">                Type: signature_algorithms (13)</span><br><span class="line">                Length: 42</span><br><span class="line">                Signature Hash Algorithms Length: 40</span><br><span class="line">                Signature Hash Algorithms (20 algorithms)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp256r1_sha256 (0x0403)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp384r1_sha384 (0x0503)</span><br><span class="line">                    Signature Algorithm: ecdsa_secp521r1_sha512 (0x0603)</span><br><span class="line">                    Signature Algorithm: ed25519 (0x0807)</span><br><span class="line">                    Signature Algorithm: ed448 (0x0808)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha256 (0x0809)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha384 (0x080a)</span><br><span class="line">                    Signature Algorithm: rsa_pss_pss_sha512 (0x080b)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha256 (0x0804)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha384 (0x0805)</span><br><span class="line">                    Signature Algorithm: rsa_pss_rsae_sha512 (0x0806)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha256 (0x0401)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha384 (0x0501)</span><br><span class="line">                    Signature Algorithm: rsa_pkcs1_sha512 (0x0601)</span><br><span class="line">                    Signature Algorithm: SHA224 ECDSA (0x0303)</span><br><span class="line">                    Signature Algorithm: SHA224 RSA (0x0301)</span><br><span class="line">                    Signature Algorithm: SHA224 DSA (0x0302)</span><br><span class="line">                    Signature Algorithm: SHA256 DSA (0x0402)</span><br><span class="line">                    Signature Algorithm: SHA384 DSA (0x0502)</span><br><span class="line">                    Signature Algorithm: SHA512 DSA (0x0602)</span><br><span class="line">            Extension: supported_versions (len&#x3D;5)</span><br><span class="line">                Type: supported_versions (43)</span><br><span class="line">                Length: 5</span><br><span class="line">                Supported Versions length: 4</span><br><span class="line">                Supported Version: TLS 1.3 (0x0304)</span><br><span class="line">                Supported Version: TLS 1.2 (0x0303)</span><br><span class="line">            Extension: psk_key_exchange_modes (len&#x3D;2)</span><br><span class="line">                Type: psk_key_exchange_modes (45)</span><br><span class="line">                Length: 2</span><br><span class="line">                PSK Key Exchange Modes Length: 1</span><br><span class="line">                PSK Key Exchange Mode: PSK with (EC)DHE key establishment (psk_dhe_ke) (1)</span><br><span class="line">            Extension: key_share (len&#x3D;38)</span><br><span class="line">                Type: key_share (51)</span><br><span class="line">                Length: 38</span><br><span class="line">                Key Share extension</span><br><span class="line">                    Client Key Share Length: 36</span><br><span class="line">                    Key Share Entry: Group: x25519, Key Exchange length: 32</span><br><span class="line">                        Group: x25519 (29)</span><br><span class="line">                        Key Exchange Length: 32</span><br><span class="line">                        Key Exchange: b15a8e88f3f46e4a94dcd6273a89f60aaee9690ed7974975…</span><br><span class="line">            Extension: padding (len&#x3D;183)</span><br><span class="line">                Type: padding (21)</span><br><span class="line">                Length: 183</span><br><span class="line">                Padding Data: 000000000000000000000000000000000000000000000000…</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="疑惑"><a href="#疑惑" class="headerlink" title="疑惑"></a>疑惑</h2><p>令我不解的是, 两个报文的version字段都是一样的(TLS1.2), 但是显示的协议却不一样.</p>
+<blockquote>
+<p>TLSv1 Record Layer: Handshake Protocol: Client Hello<br>TLSv1.2 Record Layer: Handshake Protocol: Client Hello</p>
+</blockquote>
+<p>因为我之前遇到过curl进行SSL握手失败的问题, 错误原因是现在大多数OpenSSL将最低版本设置成TLS1.2. 所以我怀疑是不是TLS版本设置的问题, 但是我尝试了很多种方法, 依旧失败.<br>随后我更加仔细的对比两个报文, 我发现了一个差异:</p>
+<blockquote>
+<p>Extension: server_name (len=21)</p>
+</blockquote>
+<p>curl的握手报文里面多出一个server_name的字段, 这时我便开始搜索关于SNI的信息. 简单来说如果一个SSL服务上有多个域名服务, 那么客户端在握手报文里面需要附带SNI, 也就是想访问的域名, 这样SSL服务才能为其选择正确的证书.</p>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><p>我搜索了nginx文档后看到:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Syntax:	proxy_ssl_server_name on | off;</span><br><span class="line">Default:	proxy_ssl_server_name off;</span><br><span class="line">Context:	http, server, location</span><br><span class="line">This directive appeared in version 1.7.0.</span><br><span class="line"></span><br><span class="line">Enables or disables passing of the server name through TLS Server Name Indication extension (SNI, RFC 6066) when establishing a connection with the proxied HTTPS server.</span><br></pre></td></tr></table></figure>
+
+<p>Nginx默认关闭了SNI, 当我打开这个选项之后一切都正常了, 我猜测大概是目标网站最近开启了SNI的选项, 当nginx没有提供SNI的时候就无法正常访问.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/" data-id="clogx15ke00049tt28grp9enk" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-内存屏障" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" class="article-date">
+  <time datetime="2020-06-21T07:21:49.000Z" itemprop="datePublished">2020-06-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/">内存屏障</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>在学习linux kernel开发时, 学习了环形缓冲区的使用, 参考<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/core-api/circular-buffers.html">Circular Buffers</a>.<br>生产者:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;producer_lock);</span><br><span class="line"></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = buffer-&gt;head;</span><br><span class="line"><span class="comment">/* The spin_unlock() and next spin_lock() provide needed ordering. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = READ_ONCE(buffer-&gt;tail);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_SPACE(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="comment">/* insert one item into the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">head</span>];</span></span><br><span class="line"></span><br><span class="line">        produce_item(item);</span><br><span class="line"></span><br><span class="line">        smp_store_release(buffer-&gt;head,</span><br><span class="line">                          (head + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* wake_up() will make sure that the head is committed before</span></span><br><span class="line"><span class="comment">         * waking anyone up */</span></span><br><span class="line">        wake_up(consumer);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;producer_lock);</span><br></pre></td></tr></table></figure>
+<p>消费者:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;consumer_lock);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Read index before reading contents at that index. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = smp_load_acquire(buffer-&gt;head);</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = buffer-&gt;tail;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_CNT(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* extract one item from the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">tail</span>];</span></span><br><span class="line"></span><br><span class="line">        consume_item(item);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Finish reading descriptor before incrementing tail. */</span></span><br><span class="line">        smp_store_release(buffer-&gt;tail,</span><br><span class="line">                          (tail + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;consumer_lock);</span><br></pre></td></tr></table></figure>
+<h2 id="疑惑"><a href="#疑惑" class="headerlink" title="疑惑"></a>疑惑</h2><p>可以看到源码中使用了自旋锁, 但是锁的作用仅仅只是用来保证同一时间只有一个消费者或者生产者. 消费者和生产者同时运作是可以的, 也就是对head、tail变量的读取与存储可以同时发生.<br>但是可以看到代码中包含了”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的使用, 它们又是什么作用.<br>如果去搜索这几个关键字, 大概率会看到一个关键词”内存屏障”.</p>
+<h2 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h2><p>关于内存屏障的理解, <a target="_blank" rel="noopener" href="http://lday.me/2017/11/04/0016_what_is_memory_barriers/">Memory Barriers</a>这篇文章已经讲得很详细了.<br>简单概括一下, 就是对内存的一系列读取存储操作的顺序是不可预测的, 这和编译器的优化有关, 也和多个CPU同时运行但拥有独立的内存高速缓冲区相关.</p>
+<h3 id="编译器优化"><a href="#编译器优化" class="headerlink" title="编译器优化"></a>编译器优化</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> x = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> y = <span class="number">2</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译器对于两个无关的复制, 在开启性能优化时, 不保证生成的机器码顺序和源码中的顺序相同. 所以在生成的程序中, 机器码的顺序可能是”y=1”在”x=1”的前面. 但是在这个例子中, 这无关紧要.<br>看看这个例子:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//thread 1</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">run1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    x = <span class="number">1</span>;</span><br><span class="line">    r1 = y;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//thread 2</span></span><br><span class="line"><span class="keyword">void</span> run2</span><br><span class="line">&#123;</span><br><span class="line">    y = <span class="number">1</span>;</span><br><span class="line">    r2 = x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>两个线程同时运行, 那么有多种情况可能发生. 但是我们编写代码时, 人为的肯定这些代码是按照顺序执行的. 所以不论两个线程如何交替, r1和r2不可能同时为0. 但实际上编译器并不知道这些变量会在别处修改, 所以它按照自己的想法进行优化, 打乱代码的顺序.<br>最后的结果可能是”r2=x”和”r1=y”最先交替执行, 这样的结果是不可预期的.</p>
+<h3 id="CPU"><a href="#CPU" class="headerlink" title="CPU"></a>CPU</h3><p>每个CPU可能拥有独立的高速缓冲区, 所以对内存的操作通常会先转化为对缓存的操作. 于是可能发生CPU0往地址x写入值1, 但是只写入了缓冲区. 此时CPU1读取地址x, 但是可惜缓冲区中的值并没有及时刷新到内存中, 所以读出来的值是不正确的.</p>
+<h3 id="限制"><a href="#限制" class="headerlink" title="限制"></a>限制</h3><p>有没有用什么手段可以限制上面所说的乱序问题, 针对编译器的限制方法十分简单, 就是使用”volatile”. volatile关键字对于编译器而言, 是开发者告诉编译器, 这个变量内存的修改, 可能不再你可视范围内, 不要对这个变量相关的代码进行优化.<br>针对CPU的限制, CPU本身提供内存屏障指令:</p>
+<ul>
+<li>写屏障sfence</li>
+<li>读屏障lfence</li>
+<li>读写屏障mfence</li>
+</ul>
+<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><p>现在来看看”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的源码:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// READ_ONCE核心代码</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> barrier() __asm__ __volatile__(<span class="meta-string">&quot;&quot;</span>: : :<span class="meta-string">&quot;memory&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __READ_ONCE_SIZE						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	<span class="keyword">switch</span> (size) &#123;							\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">1</span>: *(__u8 *)res = *(<span class="keyword">volatile</span> __u8 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">2</span>: *(__u16 *)res = *(<span class="keyword">volatile</span> __u16 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">4</span>: *(__u32 *)res = *(<span class="keyword">volatile</span> __u32 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">8</span>: *(__u64 *)res = *(<span class="keyword">volatile</span> __u64 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">default</span>:							\</span><br><span class="line">		barrier();						\</span><br><span class="line">		__builtin_memcpy((<span class="keyword">void</span> *)res, (<span class="keyword">const</span> <span class="keyword">void</span> *)p, size);	\</span><br><span class="line">		barrier();						\</span><br><span class="line">	&#125;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>可以看到READ_ONCE针对标准大小的类型, 直接使用volatile实现编译器内存屏障, 保证编译出的机器码中内存访问顺序与源码一致. 而针对其余大小的类型, 使用barrier让编译器保证其之前的内存访问先于其之后的内存访问完成.<br>所以”READ_ONCE”只是针对于编译器的内存屏障, 并不包含内存屏障指令.<br>内核使用宏CONFIG_SMP来判断CPU是否使用了SMP, 在SMP架构下，每个CPU与内存之间，都配有自己的高速缓存. 根据是否使用SMP, “smp_load_acquire”的定义也不同.<br>无SMP:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> smp_store_release(p, v)						\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	barrier();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+<p>可以看到无SMP的时候, smp_store_release只是简单的使用了barrier+”WRITE_ONCE”进行编译器层面的内存屏障.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> mb() alternative(<span class="meta-string">&quot;lock; addl $0,0(%%esp)&quot;</span>, <span class="meta-string">&quot;mfence&quot;</span>, X86_FEATURE_XMM2)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_mb()	mb()</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_store_release(p, v)					\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_load_acquire</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_load_acquire(p)						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	typeof(*p) ___p1 = READ_ONCE(*p);				\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	___p1;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>而有SMP的时候, 会使用mb插入mfence指令.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" data-id="clogx15kf00099tt209paacwt" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+
+
+  <nav id="page-nav">
+    
+    <a class="extend prev" rel="prev" href="/">&amp;laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
+  </nav>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

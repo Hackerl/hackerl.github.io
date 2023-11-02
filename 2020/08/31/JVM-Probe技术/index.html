@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>JVM Probe技术 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="原理JVM提供动态attach机制, 支持动态注入jar包. 12345678910111213141516171819202122232425262728293031package com.security.smith;import com.sun.tools.attach.AgentInitializationException;import com.sun.tools.attach.Agen">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM Probe技术">
+<meta property="og:url" content="https://hackerl.github.io/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="原理JVM提供动态attach机制, 支持动态注入jar包. 12345678910111213141516171819202122232425262728293031package com.security.smith;import com.sun.tools.attach.AgentInitializationException;import com.sun.tools.attach.Agen">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-08-31T10:14:36.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.848Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-JVM-Probe技术" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/" class="article-date">
+  <time datetime="2020-08-31T10:14:36.000Z" itemprop="datePublished">2020-08-31</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      JVM Probe技术
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>JVM提供动态attach机制, 支持动态注入jar包.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.security.smith;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AgentInitializationException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AgentLoadException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.AttachNotSupportedException;</span><br><span class="line"><span class="keyword">import</span> com.sun.tools.attach.VirtualMachine;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AgentLoader</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (args.length != <span class="number">2</span>) &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;usage: program &lt;pid&gt; &lt;jar&gt;&quot;</span>);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String pid = args[<span class="number">0</span>];</span><br><span class="line">        String jarPath = args[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;pid: &quot;</span> + pid + <span class="string">&quot; jar: &quot;</span> + jarPath);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            VirtualMachine vm = VirtualMachine.attach(pid);</span><br><span class="line"></span><br><span class="line">            vm.loadAgent(jarPath);</span><br><span class="line">            vm.detach();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (AttachNotSupportedException | IOException | AgentLoadException | AgentInitializationException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>使用方法如上, attach的过程分为3步:</p>
+<ul>
+<li>检查临时目录下是否有.java_pid{pid} unix socket文件</li>
+<li>没有则创建.attach_pid{pid}文件, 给目标进程发送信号3</li>
+<li>目标进程JVM虚拟机收到信号, 创建.java_pid{pid} unix socket文件</li>
+</ul>
+<p>基于unix socket, 可以给JVM发送指令, 例如”load”指令可以加载.so文件, VirtualMachine.loadAgent也是基于load指令实现的. loadAgent内部发送”load”指令, 使JVM加载自带的”.so”, 动态库内部加载参数指定的jar包.<br>jar包的MANIFEST.MF需要提供必要参数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Manifest-Version: 1.0</span><br><span class="line">Agent-Class: com.security.smith.SmithAgent</span><br><span class="line">Can-Retransform-Classes: true</span><br><span class="line">Boot-Class-Path: SmithAgent.jar</span><br></pre></td></tr></table></figure>
+<p>Agent-Class指定入口Class, 该Class需要实现入口方法:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithAgent</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">agentmain</span><span class="params">(String agentArgs, Instrumentation inst)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Hook"><a href="#Hook" class="headerlink" title="Hook"></a>Hook</h2><p>Instrumentation类提供一系列功能:</p>
+<ol>
+<li>ClassFileTransformer用于拦截类加载事件, 需要注册到Instrumentation</li>
+<li>Instrumentation.redefineClasses<ul>
+<li>针对已加载的类, 舍弃原本的字节码, 替换为由用户提供的byte数组</li>
+<li>功能比较危险, 一般用于修复出错的字节码</li>
+</ul>
+</li>
+<li>Instrumentation.retransformClasses<ul>
+<li>针对已加载的类, 重新调用所有已注册的ClassFileTransformer的transform方法, 两个场景</li>
+<li>在执行premain和agentmain方法前, JVM已经加载了不少类<ul>
+<li>而这些类的加载事件并没有被拦截并执行相关的注入逻辑</li>
+</ul>
+</li>
+<li>定义了多个Java Agent, 多个注入的情况, 可能需要移除其中的部分注入<ul>
+<li>调用Instrumentation.removeTransformer去除某个注入类后, 可以调用retransformClasses</li>
+<li>重新从原始byte数组开始进行注入</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Java Agent的功能是通过JVMTI Agent(C Agent), JVMTI是一个事件驱动的工具实现接口<ul>
+<li>通常会在C Agent加载后的方法入口Agent_OnLoad处注册各种事件的钩子方法</li>
+<li>当JVM触发这些事件时, 便会调用对应的钩子方法</li>
+<li>例如可以为JVMTI中的ClassFileLoadHook事件设置钩子, 从而在C层面拦截所有的类加载事件</li>
+</ul>
+</li>
+</ol>
+<p>使用Instrumentation可以添加Class拦截器, 在Class加载时能够插入或修改字节码, 达到控制整个Class的目的. 对于已经加载的Class, 可以使用retransformClasses强行重载Class, 拦截器便能对重载的Class进行拦截.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        inst.addTransformer(<span class="keyword">this</span>, <span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            inst.retransformClasses(Runtime.class);</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (UnmodifiableClassException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">byte</span>[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined, ProtectionDomain protectionDomain, <span class="keyword">byte</span>[] classfileBuffer) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>classfileBuffer就是目标Class的字节码流, 使用asm等库可以解析字节码并篡改, 返回篡改后的字节码流即可篡改Class, 返回null则示意JVM加载原本的字节码.</p>
+<h2 id="JVM函数调用"><a href="#JVM函数调用" class="headerlink" title="JVM函数调用"></a>JVM函数调用</h2><p>JVM函数调用基于栈, 例如调用Runtime.exec, 需要依次将类实例引用, exec的函数参数推出栈, 伪代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 假定类实例存在寄存器1中, 将寄存器1的值推入栈</span><br><span class="line">ALOAD 1</span><br><span class="line"># 将字符串&quot;ls&quot;推入栈</span><br><span class="line">LDC &quot;ls&quot;</span><br><span class="line"># 调用函数, 因为Java支持重载, 需要指定参数签名</span><br><span class="line">INVOKEVIRTUAL Runtime.exec (Ljava&#x2F;lang&#x2F;String;)Ljava&#x2F;lang&#x2F;Process;</span><br></pre></td></tr></table></figure>
+<p>而进入函数之后, JVM自动根据参数个数, 帮方法将参数放入寄存器(0+), 所以方法内获取参数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 获取类实例, 静态方法无实例, 所以0寄存器保存的是第一个参数</span><br><span class="line">ALOAD 0</span><br><span class="line"># 获取字符串参数&quot;ls&quot;</span><br><span class="line">ALOAD 1</span><br></pre></td></tr></table></figure>
+<h2 id="设计"><a href="#设计" class="headerlink" title="设计"></a>设计</h2><p>根据上面分析, 要将函数调用的参数信息传出, 只需要在每个函数的开头插入一段字节码, 但是字节码需要动态生成. 没有一段字节码能够搞定所有函数, 因为每个函数的参数个数以及类型都不同. 所以Hook还是需要我们设定好函数的参数类型以及签名.<br>例如针对Runtime.exe(String), 我们设定函数信息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java&#x2F;lang&#x2F;Runtime VIRTUAL_METHOD_TYPE exec &#123;&quot;string&quot;&#125;</span><br></pre></td></tr></table></figure>
+<p>那么在对Class进行拦截时, 我们可以根据上面的设定Hook函数, 根据VIRTUAL_METHOD_TYPE我们知道exec的参数从寄存器1开始, 根据{“string”}我们知道参数有1个, 并且是string类型, 这时候我们只需要插入一段字节码在exec的开头:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># 获取参数</span><br><span class="line">ALOAD 1</span><br><span class="line">INVOKESTATIC com&#x2F;security&#x2F;smith&#x2F;SmithProbe.trace (Ljava&#x2F;lang&#x2F;String;)V</span><br></pre></td></tr></table></figure>
+<p>两个字节码就可以获取函数调用信息, 第一行将参数推入栈, 第二行调用我们编写好的方法:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">trace</span><span class="params">(String arg)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上只是一个简单的例子, trace方法我们不能简单的写定参数, 因为每个Hook的函数传进来的参数都不一样. 所以我会在Hook时, 将目标函数的参数推入Object[], 然后传到trace里面来. 另外需要标识是什么类的什么方法调用的trace, 可以在生成字节码时, 给每个调用分配一个id.</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SmithProbe</span> <span class="keyword">implements</span> <span class="title">ClassFileTransformer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">trace</span><span class="params">(<span class="keyword">int</span> classID, <span class="keyword">int</span> methodID, Object... args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面是我定义的函数原型, 仅供参考.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/08/31/JVM-Probe%E6%8A%80%E6%9C%AF/" data-id="clogx15ke00039tt27c2i9sjh" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          软路由折腾记录一
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/08/10/%E6%90%AD%E5%BB%BAOpenWrt%E8%BD%AF%E8%B7%AF%E7%94%B1/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">搭建OpenWrt软路由</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

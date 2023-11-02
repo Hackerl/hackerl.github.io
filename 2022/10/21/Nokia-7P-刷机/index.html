@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Nokia 7P 刷机 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言我有一台老旧的 Nokia 7P 手机，购买于 2018 年暑假，当时看中的主要是它的类原生系统，它也在后续的工作中陪伴了我 4 年。虽然现在已经换成了苹果，但是平时看视频之类的娱乐还是停留在它上面。之前就一直想在这台 Nokia 7P 上安装第三方系统，但是由于尝试解锁 bootloader 一直失败，只能暂且作罢。最近在网上看到了一篇解锁 bootloader 的文章，貌似已经有三方的工具">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Nokia 7P 刷机">
+<meta property="og:url" content="https://hackerl.github.io/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="前言我有一台老旧的 Nokia 7P 手机，购买于 2018 年暑假，当时看中的主要是它的类原生系统，它也在后续的工作中陪伴了我 4 年。虽然现在已经换成了苹果，但是平时看视频之类的娱乐还是停留在它上面。之前就一直想在这台 Nokia 7P 上安装第三方系统，但是由于尝试解锁 bootloader 一直失败，只能暂且作罢。最近在网上看到了一篇解锁 bootloader 的文章，貌似已经有三方的工具">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-10-21T14:39:48.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.849Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Nokia-7P-刷机" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/" class="article-date">
+  <time datetime="2022-10-21T14:39:48.000Z" itemprop="datePublished">2022-10-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Nokia 7P 刷机
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>我有一台老旧的 <code>Nokia 7P</code> 手机，购买于 2018 年暑假，当时看中的主要是它的类原生系统，它也在后续的工作中陪伴了我 4 年。虽然现在已经换成了苹果，但是平时看视频之类的娱乐还是停留在它上面。之前就一直想在这台 <code>Nokia 7P</code> 上安装第三方系统，但是由于尝试解锁 <code>bootloader</code> 一直失败，只能暂且作罢。<br>最近在网上看到了一篇解锁 <code>bootloader</code> 的<a target="_blank" rel="noopener" href="https://www.techmesto.com/guide-unlock-bootloader-nokia-android-phones/">文章</a>，貌似已经有三方的工具公开了，随即摩拳擦掌跃跃欲试，挑了个空闲的日子开始这趟刷机之旅。</p>
+<h2 id="驱动"><a href="#驱动" class="headerlink" title="驱动"></a>驱动</h2><p>在诺基亚关机状态下，长按电源键与音量加可以进入 <code>bootloader</code> 模式，此时可以使用 <code>Android SDK</code> 提供的 <code>fastboot</code> 工具刷入 <code>recovery</code>，比如常见的 <code>TWRP</code>，这是刷机的首要步骤。然而将 <code>bootloader</code> 模式下的手机使用 <code>USB</code> 连接电脑，电脑是无法识别的，因为缺少了驱动程序。<br>安装驱动程序最简单的方式就是在手机开机状态下，使用 <code>USB</code> 连接电脑，会自动从手机挂载出一个 <code>CD-ROM</code> 盘符，里面就有官方驱动安装程序，更多的安装方式可以参考这篇<a target="_blank" rel="noopener" href="https://www.techmesto.com/download-official-nokia-usb-drivers-for-windows-adb-fastboot-others/">文章</a>。<br>安装完驱动后打开设备管理器，如果能看到 <code>bootloader</code> 状态下的手机被识别成 <code>fastboot</code> 设备，则说明驱动已正常运行。</p>
+<h2 id="解锁"><a href="#解锁" class="headerlink" title="解锁"></a>解锁</h2><p>在驱动安装完成的情况下，按照第一篇文章的步骤，下载 <code>Unlock Tool</code> 并在<a target="_blank" rel="noopener" href="https://www.techmesto.com/nokia-ubl-otp/">网页</a>上获取 <code>OPT</code> 口令。每天的 <code>OPT</code> 口令有上限，先到先得，并且每个口令有效期为 15 分钟。打开工具输入 <code>OPT</code>，并且使用 <code>USB</code> 连接处于 <code>bootloader</code> 模式下的手机，点击解锁按钮即可。</p>
+<h2 id="TWRP"><a href="#TWRP" class="headerlink" title="TWRP"></a>TWRP</h2><p>成功解锁 <code>bootloader</code> 后，我们可以无限制的刷入三方固件了，首先要准备的是 <a target="_blank" rel="noopener" href="https://twrp.me/nokia/nokia7plus.html">TWRP</a>，从网站上下载最新固件并命名为 <code>twrp.img</code>。<br>我首次尝试在 <code>bootloader</code> 模式中直接刷入固件：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fastboot flash recovery twrp.img</span><br></pre></td></tr></table></figure>
+<p>但是显示如下错误：</p>
+<blockquote>
+<p>FAILED (remote: (recovery_b) No such partition)</p>
+</blockquote>
+<p>于是我选择载入到 <code>TWRP</code> 中进行安装：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fastboot boot twrp.img</span><br></pre></td></tr></table></figure>
+<p>手机自动重启后，便进入了 <code>TWRP</code> 中，此时可以在选项中将当前 <code>TWRP</code> 覆盖手机的 <code>recovery</code>。</p>
+<h2 id="AB-分区"><a href="#AB-分区" class="headerlink" title="AB 分区"></a>AB 分区</h2><p>较新的手机现在都是有 AB 分区的，可以安装两个独立的系统，在 <code>bootloader</code> 模式下可以选择进入的分区：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fastboot set_active [a|b]</span><br></pre></td></tr></table></figure>
+<p>如果你在 A 分区安装了系统，但是激活了 B 分区，那么重启手机后将无法成功进入系统。同样，AB 分区也有两套 <code>recovery</code>，如果你只是将 <code>TWRP</code> 安装在 B 分区，那么 A 分区的 <code>recovery</code> 还是自带的。我将 <code>TWRP</code> 安装在了 B 分区，如果此时激活的是 A 分区，那么可以使用如下命令可以进入 B 分区的 <code>recovery</code>：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fastboot set_active b</span><br><span class="line">fastboot reboot recovery</span><br></pre></td></tr></table></figure>
+<h2 id="刷机"><a href="#刷机" class="headerlink" title="刷机"></a>刷机</h2><p>我选择的三方固件是 <code>LineageOS</code>，可以在<a target="_blank" rel="noopener" href="https://forum.xda-developers.com/t/closed-rom-12-0-onyx-lineageos-19-0-unofficial.3993445/">论坛</a>中下载镜像。在 <code>TWRP</code> 中，可以直接通过 <code>USB</code> 传输文件，也可以使用 <code>adb</code> 命令，能够很方便地将系统包传输到手机中。<br>在 <code>TWRP</code> 的界面中，先擦除掉所有数据，再进入安装界面并选中系统包开始刷入。如果此时激活的是 B 分区，那么系统的安装会默认选择 A 分区。安装完后重启之前，需要切换到 A 分区，然后重启。</p>
+<h2 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h2><p>在首次刷入系统包时报错：</p>
+<blockquote>
+<p>TWRP Error Applying Update: 28 kDownloadOperationExecutionError</p>
+</blockquote>
+<p>搜索后得知是因为 <code>Nokia</code> 默认的 <code>system</code> 分区空间太小，需要重新分区，使用 <a target="_blank" rel="noopener" href="https://forum.xda-developers.com/t/closed-guide-repartition-tool-for-nokia-6-1-plus-x6.4334461/">Repartition tool</a> 重新分区后重复上诉步骤即可。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/" data-id="clogx15ke00059tt211u50t9n" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          我的家庭网络架构
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2022/02/28/Elkeid-Golang-RASP/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Elkeid Golang RASP</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

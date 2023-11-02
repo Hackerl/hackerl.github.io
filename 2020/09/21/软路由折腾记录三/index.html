@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>软路由折腾记录三 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="ADGuard在路由器层面进行广告过滤, 并没有特别有效的方法, 到目前为止最有效的依旧是浏览器插件. 因为广告过滤的核心是拦截js&#x2F;图片, 路由器上的透明代理很难窥视HTTPS传输的内容, 所以目前的路由器插件仅能对HTTP进行过滤. ADGuard Home另辟蹊径, 它提供DNS服务, 对黑名单里的广告域名进行拦截, 返回一个无法访问的IP. 部署由于clash提供了DNS服务, 所以需要调">
+<meta property="og:type" content="article">
+<meta property="og:title" content="软路由折腾记录三">
+<meta property="og:url" content="https://hackerl.github.io/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="ADGuard在路由器层面进行广告过滤, 并没有特别有效的方法, 到目前为止最有效的依旧是浏览器插件. 因为广告过滤的核心是拦截js&#x2F;图片, 路由器上的透明代理很难窥视HTTPS传输的内容, 所以目前的路由器插件仅能对HTTP进行过滤. ADGuard Home另辟蹊径, 它提供DNS服务, 对黑名单里的广告域名进行拦截, 返回一个无法访问的IP. 部署由于clash提供了DNS服务, 所以需要调">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-09-21T02:39:35.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.850Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-软路由折腾记录三" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" class="article-date">
+  <time datetime="2020-09-21T02:39:35.000Z" itemprop="datePublished">2020-09-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      软路由折腾记录三
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="ADGuard"><a href="#ADGuard" class="headerlink" title="ADGuard"></a>ADGuard</h2><p>在路由器层面进行广告过滤, 并没有特别有效的方法, 到目前为止最有效的依旧是浏览器插件. 因为广告过滤的核心是拦截js/图片, 路由器上的透明代理很难窥视HTTPS传输的内容, 所以目前的路由器插件仅能对HTTP进行过滤. ADGuard Home另辟蹊径, 它提供DNS服务, 对黑名单里的广告域名进行拦截, 返回一个无法访问的IP.</p>
+<h3 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h3><p>由于clash提供了DNS服务, 所以需要调整ADGuard/clash的上下游顺序.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dnsmasq -&gt; ADGuard -&gt; clash</span><br></pre></td></tr></table></figure>
+<p>首先启动ADGuard:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run --name adguardhome -v /my/own/workdir:/opt/adguardhome/work -v /my/own/confdir:/opt/adguardhome/conf -p 5301:53/tcp -p 5301:53/udp -p 3000:3000/tcp -d adguard/adguardhome</span><br></pre></td></tr></table></figure>
+<p>ADGuard的DNS服务监听5031端口, 而clash监听5300端口. 首先编辑dnsmasq配置文件, 设置上游服务器为ADGuard:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">server=127.0.0.1#5301</span><br></pre></td></tr></table></figure>
+<p>接着访问软路由3000端口, 这是ADGuard提供的web界面, 在里面配置上游DNS为5300. 接下来就可以自有配置过滤规则, 配置完后可以执行命令验证广告域名是否被屏蔽:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig ad.xxx.xxx</span><br></pre></td></tr></table></figure>
+<h3 id="效果"><a href="#效果" class="headerlink" title="效果"></a>效果</h3><p>由于广告推送技术的发展, 现在光屏蔽域名还远远不够. 实测效果来看, 国内各大视频网站的广告均无法过滤, 而类似于谷歌联盟的图片广告可以屏蔽. 另外ADGuard不仅仅用于广告过滤, 还能屏蔽一些统计js, 针对斗鱼/虎牙等还能屏蔽p2p通信, 这些都需要在web界面里勾选一些开源规则.<br>但需要注意, 屏蔽某些域名可能导致网站体验不佳, 例如禁用p2p后斗鱼/虎牙会偶尔卡顿.</p>
+<h2 id="ipset"><a href="#ipset" class="headerlink" title="ipset"></a>ipset</h2><p>在使用了tproxy透明代理UDP流量后, 所有TCP/UDP流量均由clash处理, 包括与大陆ip的通信. 由于UDP转发本身比较耗费CPU, 所以我考虑能不能让大陆ip直接在iptables层放行, 只有国外ip的流量会通过clash.<br>ipset是iptables提供的工具, 你可以给一组ip取一个名称, 然后在iptables规则中检测目标ip是否属于该组. 所以我们只需要把大陆的ip网段添加到一个组中, 取名为”china”, 接着新建规则, 如果ip属于”china”则不进行透明代理.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">wget http://www.ipdeny.com/ipblocks/data/countries/cn.zone</span><br><span class="line"></span><br><span class="line">ipset -N china hash:net</span><br><span class="line">for i in $(cat ./cn.zone ); do</span><br><span class="line">    ipset -A china $i;</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+<p>接着在iptables相应的表中添加规则:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t mangle -A CLASH -p udp -m set --match-set china dst -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -p tcp -m set --match-set china dst -j RETURN</span><br></pre></td></tr></table></figure>
+<p>配置完成后, 只有国外ip的访问会经过clash, 而大陆ip的访问由iptables直接转发.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" data-id="clogx15kg000d9tt2bnjn4b55" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/10/15/flutter%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B%E4%B8%80/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          flutter逆向工程一
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">软路由折腾记录二</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

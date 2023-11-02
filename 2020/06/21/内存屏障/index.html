@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>内存屏障 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="起因在学习linux kernel开发时, 学习了环形缓冲区的使用, 参考Circular Buffers.生产者: 123456789101112131415161718192021spin_lock(&amp;producer_lock);unsigned long head &#x3D; buffer-&gt;head;&#x2F;* The spin_unlock() and next spin_lock()">
+<meta property="og:type" content="article">
+<meta property="og:title" content="内存屏障">
+<meta property="og:url" content="https://hackerl.github.io/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="起因在学习linux kernel开发时, 学习了环形缓冲区的使用, 参考Circular Buffers.生产者: 123456789101112131415161718192021spin_lock(&amp;producer_lock);unsigned long head &#x3D; buffer-&gt;head;&#x2F;* The spin_unlock() and next spin_lock()">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-06-21T07:21:49.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.849Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-内存屏障" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" class="article-date">
+  <time datetime="2020-06-21T07:21:49.000Z" itemprop="datePublished">2020-06-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      内存屏障
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="起因"><a href="#起因" class="headerlink" title="起因"></a>起因</h2><p>在学习linux kernel开发时, 学习了环形缓冲区的使用, 参考<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/core-api/circular-buffers.html">Circular Buffers</a>.<br>生产者:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;producer_lock);</span><br><span class="line"></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = buffer-&gt;head;</span><br><span class="line"><span class="comment">/* The spin_unlock() and next spin_lock() provide needed ordering. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = READ_ONCE(buffer-&gt;tail);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_SPACE(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="comment">/* insert one item into the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">head</span>];</span></span><br><span class="line"></span><br><span class="line">        produce_item(item);</span><br><span class="line"></span><br><span class="line">        smp_store_release(buffer-&gt;head,</span><br><span class="line">                          (head + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* wake_up() will make sure that the head is committed before</span></span><br><span class="line"><span class="comment">         * waking anyone up */</span></span><br><span class="line">        wake_up(consumer);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;producer_lock);</span><br></pre></td></tr></table></figure>
+<p>消费者:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">spin_lock(&amp;consumer_lock);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Read index before reading contents at that index. */</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> head = smp_load_acquire(buffer-&gt;head);</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> tail = buffer-&gt;tail;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (CIRC_CNT(head, tail, buffer-&gt;size) &gt;= <span class="number">1</span>) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* extract one item from the buffer */</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">item</span> *<span class="title">item</span> = <span class="title">buffer</span>[<span class="title">tail</span>];</span></span><br><span class="line"></span><br><span class="line">        consume_item(item);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Finish reading descriptor before incrementing tail. */</span></span><br><span class="line">        smp_store_release(buffer-&gt;tail,</span><br><span class="line">                          (tail + <span class="number">1</span>) &amp; (buffer-&gt;size - <span class="number">1</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">spin_unlock(&amp;consumer_lock);</span><br></pre></td></tr></table></figure>
+<h2 id="疑惑"><a href="#疑惑" class="headerlink" title="疑惑"></a>疑惑</h2><p>可以看到源码中使用了自旋锁, 但是锁的作用仅仅只是用来保证同一时间只有一个消费者或者生产者. 消费者和生产者同时运作是可以的, 也就是对head、tail变量的读取与存储可以同时发生.<br>但是可以看到代码中包含了”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的使用, 它们又是什么作用.<br>如果去搜索这几个关键字, 大概率会看到一个关键词”内存屏障”.</p>
+<h2 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h2><p>关于内存屏障的理解, <a target="_blank" rel="noopener" href="http://lday.me/2017/11/04/0016_what_is_memory_barriers/">Memory Barriers</a>这篇文章已经讲得很详细了.<br>简单概括一下, 就是对内存的一系列读取存储操作的顺序是不可预测的, 这和编译器的优化有关, 也和多个CPU同时运行但拥有独立的内存高速缓冲区相关.</p>
+<h3 id="编译器优化"><a href="#编译器优化" class="headerlink" title="编译器优化"></a>编译器优化</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> x = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">int</span> y = <span class="number">2</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>编译器对于两个无关的复制, 在开启性能优化时, 不保证生成的机器码顺序和源码中的顺序相同. 所以在生成的程序中, 机器码的顺序可能是”y=1”在”x=1”的前面. 但是在这个例子中, 这无关紧要.<br>看看这个例子:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//thread 1</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">run1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    x = <span class="number">1</span>;</span><br><span class="line">    r1 = y;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//thread 2</span></span><br><span class="line"><span class="keyword">void</span> run2</span><br><span class="line">&#123;</span><br><span class="line">    y = <span class="number">1</span>;</span><br><span class="line">    r2 = x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>两个线程同时运行, 那么有多种情况可能发生. 但是我们编写代码时, 人为的肯定这些代码是按照顺序执行的. 所以不论两个线程如何交替, r1和r2不可能同时为0. 但实际上编译器并不知道这些变量会在别处修改, 所以它按照自己的想法进行优化, 打乱代码的顺序.<br>最后的结果可能是”r2=x”和”r1=y”最先交替执行, 这样的结果是不可预期的.</p>
+<h3 id="CPU"><a href="#CPU" class="headerlink" title="CPU"></a>CPU</h3><p>每个CPU可能拥有独立的高速缓冲区, 所以对内存的操作通常会先转化为对缓存的操作. 于是可能发生CPU0往地址x写入值1, 但是只写入了缓冲区. 此时CPU1读取地址x, 但是可惜缓冲区中的值并没有及时刷新到内存中, 所以读出来的值是不正确的.</p>
+<h3 id="限制"><a href="#限制" class="headerlink" title="限制"></a>限制</h3><p>有没有用什么手段可以限制上面所说的乱序问题, 针对编译器的限制方法十分简单, 就是使用”volatile”. volatile关键字对于编译器而言, 是开发者告诉编译器, 这个变量内存的修改, 可能不再你可视范围内, 不要对这个变量相关的代码进行优化.<br>针对CPU的限制, CPU本身提供内存屏障指令:</p>
+<ul>
+<li>写屏障sfence</li>
+<li>读屏障lfence</li>
+<li>读写屏障mfence</li>
+</ul>
+<h2 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h2><p>现在来看看”READ_ONCE”、”smp_load_acquire”、”smp_store_release”的源码:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// READ_ONCE核心代码</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> barrier() __asm__ __volatile__(<span class="meta-string">&quot;&quot;</span>: : :<span class="meta-string">&quot;memory&quot;</span>)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __READ_ONCE_SIZE						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	<span class="keyword">switch</span> (size) &#123;							\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">1</span>: *(__u8 *)res = *(<span class="keyword">volatile</span> __u8 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">2</span>: *(__u16 *)res = *(<span class="keyword">volatile</span> __u16 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">4</span>: *(__u32 *)res = *(<span class="keyword">volatile</span> __u32 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">case</span> <span class="number">8</span>: *(__u64 *)res = *(<span class="keyword">volatile</span> __u64 *)p; <span class="keyword">break</span>;		\</span><br><span class="line">	<span class="keyword">default</span>:							\</span><br><span class="line">		barrier();						\</span><br><span class="line">		__builtin_memcpy((<span class="keyword">void</span> *)res, (<span class="keyword">const</span> <span class="keyword">void</span> *)p, size);	\</span><br><span class="line">		barrier();						\</span><br><span class="line">	&#125;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>可以看到READ_ONCE针对标准大小的类型, 直接使用volatile实现编译器内存屏障, 保证编译出的机器码中内存访问顺序与源码一致. 而针对其余大小的类型, 使用barrier让编译器保证其之前的内存访问先于其之后的内存访问完成.<br>所以”READ_ONCE”只是针对于编译器的内存屏障, 并不包含内存屏障指令.<br>内核使用宏CONFIG_SMP来判断CPU是否使用了SMP, 在SMP架构下，每个CPU与内存之间，都配有自己的高速缓存. 根据是否使用SMP, “smp_load_acquire”的定义也不同.<br>无SMP:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> smp_store_release(p, v)						\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	barrier();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+<p>可以看到无SMP的时候, smp_store_release只是简单的使用了barrier+”WRITE_ONCE”进行编译器层面的内存屏障.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> mb() alternative(<span class="meta-string">&quot;lock; addl $0,0(%%esp)&quot;</span>, <span class="meta-string">&quot;mfence&quot;</span>, X86_FEATURE_XMM2)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_mb()	mb()</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_store_release</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_store_release(p, v)					\</span></span><br><span class="line"><span class="keyword">do</span> &#123;									\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	WRITE_ONCE(*p, v);						\</span><br><span class="line">&#125; <span class="keyword">while</span> (<span class="number">0</span>)</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __smp_load_acquire</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __smp_load_acquire(p)						\</span></span><br><span class="line">(&#123;									\</span><br><span class="line">	typeof(*p) ___p1 = READ_ONCE(*p);				\</span><br><span class="line">	compiletime_assert_atomic_type(*p);				\</span><br><span class="line">	__smp_mb();							\</span><br><span class="line">	___p1;								\</span><br><span class="line">&#125;)</span><br></pre></td></tr></table></figure>
+<p>而有SMP的时候, 会使用mb插入mfence指令.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/06/21/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C/" data-id="clogx15kf00099tt209paacwt" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/08/05/Nginx%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86SNI%E9%97%AE%E9%A2%98%E6%BA%AF%E6%BA%90/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Nginx反向代理SNI问题溯源
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

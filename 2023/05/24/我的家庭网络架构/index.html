@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>我的家庭网络架构 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言很久没写博客了，最近正好有空可以谈谈我最近更新的家庭网络架构。我所有的网络组件都部署在一台 J1900 的机器上，安装的操作系统是 debian 10，主板配有四个网口。我将其中三个网口合并为一个 bridge 用来构建我的私有子网，供主机和路由器插线连接，另一个网口连接光猫作为出口。 科学上网通过在软路由上使用 iptables + tproxy 重定向 TCP&#x2F;UDP 流量到 clash，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="我的家庭网络架构">
+<meta property="og:url" content="https://hackerl.github.io/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="前言很久没写博客了，最近正好有空可以谈谈我最近更新的家庭网络架构。我所有的网络组件都部署在一台 J1900 的机器上，安装的操作系统是 debian 10，主板配有四个网口。我将其中三个网口合并为一个 bridge 用来构建我的私有子网，供主机和路由器插线连接，另一个网口连接光猫作为出口。 科学上网通过在软路由上使用 iptables + tproxy 重定向 TCP&#x2F;UDP 流量到 clash，">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/lrxyn0j.png">
+<meta property="og:image" content="https://i.imgur.com/1TkKfYn.png">
+<meta property="article:published_time" content="2023-05-24T15:33:46.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.850Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/lrxyn0j.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-我的家庭网络架构" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/" class="article-date">
+  <time datetime="2023-05-24T15:33:46.000Z" itemprop="datePublished">2023-05-24</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      我的家庭网络架构
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>很久没写博客了，最近正好有空可以谈谈我最近更新的家庭网络架构。我所有的网络组件都部署在一台 <code>J1900</code> 的机器上，安装的操作系统是 <code>debian 10</code>，主板配有四个网口。我将其中三个网口合并为一个 <code>bridge</code> 用来构建我的私有子网，供主机和路由器插线连接，另一个网口连接光猫作为出口。</p>
+<h2 id="科学上网"><a href="#科学上网" class="headerlink" title="科学上网"></a>科学上网</h2><p>通过在软路由上使用 <code>iptables</code> + <code>tproxy</code> 重定向 <code>TCP/UDP</code> 流量到 <code>clash</code>，可以实现全局翻墙，所有设备无需设置。在讨论我遇到的问题之前，有必要了解一下 <code>clash</code> 在软路由上怎么进行规则判断的，换言之 <code>clash</code> 怎么知道我们当前的连接是否需要走代理。</p>
+<h3 id="DNS"><a href="#DNS" class="headerlink" title="DNS"></a>DNS</h3><p>软路由上的流量被重定向后，<code>clash</code> 只能获取的目标 <code>ip</code>，但是根据 <code>ip</code> 地区判断是远远不够的，那么该如何获取 <code>ip</code> 对应的域名呢？<code>clash</code> 自带了一个 <code>DNS server</code>，在软路由上将所有 <code>DNS</code> 请求转发给它，那么它就能记录域名和 <code>ip</code> 的对应关系。但是由于存在许多问题，这种 <code>redir-host</code> 模式在较新的 <code>clash</code> 中被删除了。它最大的问题就是无法应对 <code>DNS</code> 污染，例如最上游 DNS 被污染时，返回 <code>google</code> 的 <code>ip</code> 是 <code>127.0.0.1</code> 这种，那么该请求直接在主机上请求失败了。</p>
+<h3 id="FakeIP"><a href="#FakeIP" class="headerlink" title="FakeIP"></a>FakeIP</h3><p>在使用 <code>redir-host</code> 的过程中，我经常遇到网络不正常的情况，迫于无奈只能切换到 <code>fake-ip</code> 模式。它的原理就是 <code>clash</code> 的 <code>DNS server</code> 返回一个虚假的内网 <code>ip</code>，例如 <code>198.168.0.0/16</code>，同时记录 <code>ip</code> 与 <code>hostname</code> 的对应关系，这样就可以避免 <code>DNS</code> 污染的问题。当然 <code>fake-ip</code> 也有缺陷，例如 <code>QQ</code> 的某些域名指向就是 <code>127.0.0.1</code>，因为需要和 <code>QQ</code> 客户端通信，另外 <code>Windows</code> 的网络探测服务也无法在 <code>fake-ip</code> 模式下工作。对于这些特殊的域名，我们可以在 <code>clash</code> 配置中过滤掉，让它们返回真实的查询结果。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">dns:</span></span><br><span class="line">  <span class="attr">enable:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">ipv6:</span> <span class="literal">false</span></span><br><span class="line">  <span class="attr">listen:</span> <span class="number">0.0</span><span class="number">.0</span><span class="number">.0</span><span class="string">:5300</span></span><br><span class="line">  <span class="attr">enhanced-mode:</span> <span class="string">fake-ip</span></span><br><span class="line">  <span class="attr">fake-ip-range:</span> <span class="number">198.18</span><span class="number">.0</span><span class="number">.1</span><span class="string">/16</span></span><br><span class="line">  <span class="attr">nameserver:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">https://doh.pub/dns-query</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">https://dns.alidns.com/dns-query</span></span><br><span class="line">  <span class="attr">fake-ip-filter:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;*.lan&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;wspeed.qq.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;internal-api-lark-file.feishu.cn&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;jrlt.beacon.qq.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;localhost.ptlogin2.qq.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;+.srv.nintendo.net&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;+.stun.playstation.net&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;+.msftconnecttest.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;+.msftncsi.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;+.xboxlive.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;msftconnecttest.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;xbox.*.microsoft.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;*.battlenet.com.cn&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;*.battlenet.com&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;*.blzstatic.cn&#x27;</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">&#x27;*.battle.net&#x27;</span></span><br></pre></td></tr></table></figure>
+<h2 id="游戏加速"><a href="#游戏加速" class="headerlink" title="游戏加速"></a>游戏加速</h2><p>游戏加速说到底还是代理，只不过是延迟很低的线路，使用小米等路由器同时开启翻墙和游戏加速插件肯定会有冲突，但是在自己配置的 <code>Linux</code> 路由器里，我可以精准地控制每一条规则。</p>
+<h3 id="docker"><a href="#docker" class="headerlink" title="docker"></a>docker</h3><p>一年前我的方案是将 <code>openwrt</code> 版本的 <code>UU加速器</code> 跑在 <code>docker</code> 里，它其实是一个为主机加速提供的方案，所以我写了个 <code>python</code> 脚本将我的软路由伪装成 <code>PS4</code>：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"></span><br><span class="line">UDP_IP = <span class="string">&quot;0.0.0.0&quot;</span></span><br><span class="line">UDP_PORT = <span class="number">987</span></span><br><span class="line"></span><br><span class="line">sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)</span><br><span class="line">sock.bind((UDP_IP, UDP_PORT))</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    data, addr = sock.recvfrom(<span class="number">1024</span>)</span><br><span class="line">    print(<span class="string">&quot;received message from %s[%d]: %s&quot;</span> % (addr[<span class="number">0</span>], addr[<span class="number">1</span>], data.decode(<span class="string">&#x27;utf8&#x27;</span>)))</span><br><span class="line"></span><br><span class="line">    response = <span class="string">&quot;HTTP/1.1 200 OK\r\nhost-id:0123456789AB\r\nhost-type:PS4\r\nhost-name:MyPS4\r\nhost-request-port:%d\r\ndevice-discovery-protocol-version:00020020\r\nsystem-version:07020001\r\nrunning-app-name:Youtube\r\nrunning-app-titleid:CUSA01116\r\n\r\n&quot;</span> % addr[<span class="number">1</span>]</span><br><span class="line">    sock.sendto(response.encode(<span class="string">&#x27;utf8&#x27;</span>), addr)</span><br></pre></td></tr></table></figure>
+<p>想象一下，<code>UU加速器</code> 在容器 <code>172.17.0.3</code> 中广播 <code>UDP</code> 包，然后这个脚本在软路由的 <code>172.17.0.1</code> 上收到了这个包，并成功回复让对方认为自己是一台 <code>PS4</code>。然后在手机 <code>APP</code> 上就可以开启加速，这个时候我们只需要在软路由上将需要加速的包路由给 <code>172.17.0.3</code> 即可，流量会顺利地从容器的 <code>tun</code> 网卡进入 <code>UU加速器</code> 的专线。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># https://github.com/Hackerl/docker-uuplugin</span></span><br><span class="line">docker build -t docker-uuplugin . --build-arg UU_IP=172.17.0.3</span><br><span class="line">docker run -d -p 16363:16363 --<span class="built_in">cap</span>-add NET_ADMIN --device /dev/net/tun:/dev/net/tun -it docker-uuplugin</span><br></pre></td></tr></table></figure>
+<p>启动后添加路由规则：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip rule add fwmark 0x163 table 0x163</span><br><span class="line">ip route add default via 172.17.0.3 table 0x163</span><br></pre></td></tr></table></figure>
+<p>这个路由规则的意思是如果流量带有 0x163 标志，那么就路由给 <code>172.17.0.3</code>，接着我们可以在 <code>iptables</code> 里给特定流量打上标志：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">iptables -t mangle -N UUPLUGIN</span><br><span class="line">iptables -t mangle -A UUPLUGIN -p udp -s 192.168.10.0/24 --dport 32768:65534 -j MARK --<span class="built_in">set</span>-mark 0x163</span><br><span class="line">iptables -t mangle -A UUPLUGIN -p udp -s 192.168.10.0/24 --dport 10000:32768 -j MARK --<span class="built_in">set</span>-mark 0x163</span><br><span class="line">iptables -t mangle -A UUPLUGIN -p udp -s 192.168.10.0/24 --dport 1025:9999 -j MARK --<span class="built_in">set</span>-mark 0x163</span><br><span class="line">iptables -t mangle -A UUPLUGIN -m mark --mark 0x163 -j ACCEPT</span><br><span class="line">iptables -t mangle -A PREROUTING -j UUPLUGIN</span><br></pre></td></tr></table></figure>
+<p>例如我们给 <code>UDP</code> 高端口号的包打上标志，这其实是大多数网络游戏的通讯方式，例如英雄联盟。</p>
+<h3 id="虚拟机"><a href="#虚拟机" class="headerlink" title="虚拟机"></a>虚拟机</h3><p>使用 <code>docker</code> 运行 <code>UU加速器</code> 进行游戏加速也存在问题，一就是可选择的节点并不多，毕竟这是主机加速方案，二就是它的 <code>iptables</code> 限制了只代理某些源 <code>ip</code>。由于第二个限制，我们没有办法直接在它的容器中部署 <code>socks5</code> 代理，以集成到 <code>clash</code> 规则中，当然我可以修改它的规则，但是每次启动加速都要修改的话太麻烦了。此时我有了一个大胆的想法，我可不可以在软路由上跑一个 <code>windows</code> 虚拟机，然后将流量转发到虚拟机中去加速，一想到 <code>J1900</code> 廉价的性能我心里就充满了问号。<br>我首先安装了一个 <code>windows 7</code> 虚拟机，连上 <code>VNC</code> 后果然很卡，然后部署了一个简单的 <code>socks5</code> 代理，接着将英雄联盟台服的域名全部抠出来，写好 <code>clash</code> 规则：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">script:</span></span><br><span class="line">  <span class="attr">engine:</span> <span class="string">expr</span></span><br><span class="line">  <span class="attr">shortcuts:</span></span><br><span class="line">    <span class="attr">game:</span> <span class="string">network</span> <span class="string">==</span> <span class="string">&#x27;udp&#x27;</span> <span class="string">and</span> <span class="string">dst_port</span> <span class="string">&gt;=</span> <span class="number">1025</span></span><br><span class="line"></span><br><span class="line"><span class="attr">rules:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">SCRIPT,game,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN,lolstatic-a.akamaihd.net,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN-KEYWORD,riot,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN-SUFFIX,pvp.net,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN-SUFFIX,leagueoflegends.com,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN-SUFFIX,newrelic.com,GAME</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">DOMAIN,lolesports.com,GAME</span></span><br></pre></td></tr></table></figure>
+<p>尝试了一下确实可以工作，所有英雄联盟相关的流量都由虚拟机代理。那么接下来要做的就是怎么把这台虚拟机压缩一下，<code>J1900</code> 的确有点带不动，而且为了一个游戏加速我也并不是很乐意耗费这么多 <code>CPU</code> 和内存。我在网上找到了一个 <a target="_blank" rel="noopener" href="https://archive.org/details/windows-7x-86-supernano-final"><code>Windows 7 Super-Nano Lite</code></a>，镜像居然只有 <code>316MB</code>，确定这可以跑起来吗？我安装了一下确实跑起来了，但是包括网络驱动之类的东西全部被删除了。</p>
+<p><img src="https://i.imgur.com/lrxyn0j.png"></p>
+<p>磁盘占用只有 <code>600MB</code>，内存也只用了 <code>200MB</code>，为了进一步优化性能，我使用 <code>virt-install</code> 安装虚拟机时设置的网络和磁盘驱动都是 <code>virtio</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.173-4/virtio-win-0.1.173_x86.vfd</span><br><span class="line">sudo virt-install --name=win7 --virt-type kvm --memory 1024 --vcpus=1 --os-type=windows --os-variant win7 --disk path=win7.qcow2,format=qcow2,bus=virtio --cdrom Windows7SuperNanoLite.iso --graphics vnc,listen=0.0.0.0 --network default,model=virtio --disk path=virtio-win-0.1.173_x86.vfd,device=floppy --noautoconsole</span><br></pre></td></tr></table></figure>
+<p>在使用 <code>VNC</code> 安装的时候会提示找不到驱动器，因为 <code>windows 7</code> 无法识别 <code>virtio</code> 设备，所有在界面上点击加载驱动，加载 <code>virtio-win-0.1.173_x86.vfd</code> 软盘中的磁盘和网络驱动。安装后的系统是无法显示中文的，因为中文包也被删除了。找一台完整的 <code>windows 7</code> 机器，拷贝 <code>C:\Windows\System32\C_936.NLS</code> 以及 <code>C:\Windows\Fonts\msyh.ttf</code> 到虚拟机中，中文就不会乱码了。安装完加速器后，需要部署一个支持 <code>TCP/UDP</code> 的 <code>socks5</code> 代理，我找了一圈发现没几个支持 <code>UDP</code> 的，最后选择了 <a target="_blank" rel="noopener" href="https://github.com/3proxy/3proxy/issues"><code>3proxy</code></a>，配置文件如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;usr&#x2F;local&#x2F;bin&#x2F;3proxy</span><br><span class="line"></span><br><span class="line">system &quot;echo 3proxy up!&quot;</span><br><span class="line"></span><br><span class="line">########### SERVICE ###########</span><br><span class="line"># Set timeouts</span><br><span class="line">timeouts 1 5 30 60 180 1800 15 60</span><br><span class="line"></span><br><span class="line"># Service installation, daemon for nix, service for win32</span><br><span class="line">#daemon</span><br><span class="line">service</span><br><span class="line"></span><br><span class="line">########### LOGGING ###########</span><br><span class="line"># Set up logs</span><br><span class="line">#log &quot;&#x2F;var&#x2F;logs&#x2F;3proxy&#x2F;%Y%m%d.log&quot; D</span><br><span class="line">log &quot;3proxy-%Y%m%d.log&quot; D</span><br><span class="line">logformat &quot;- +_L%t.%. %Y-%m-%d  %N.%p %E %U %C:%c %R:%r %O %I %h %T&quot;</span><br><span class="line">archiver rar rar a -df -inul %A %F</span><br><span class="line">rotate 30</span><br><span class="line"></span><br><span class="line">########### IFACE ###########</span><br><span class="line"># External is the interface you will send data out from, set with a static IP</span><br><span class="line">external 0.0.0.0</span><br><span class="line"># Internal is the interface you will listen on, in this case localhost (no physical nic)</span><br><span class="line">internal 0.0.0.0</span><br><span class="line"></span><br><span class="line">########### SOCKS ###########</span><br><span class="line"># Socks5  proxy setup</span><br><span class="line">auth none</span><br><span class="line">flush</span><br><span class="line">maxconn 300</span><br><span class="line">socks</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://i.imgur.com/1TkKfYn.png"></p>
+<p>搞完这个之后在英雄联盟台服开了把大乱斗，延迟居然才 30 比国服还低，看了下软路由的资源占用，虚拟机低负载时 <code>qemu</code> 进程稳定占用 45% 左右的单核 <code>CPU</code>，算是可以接受的范围，毕竟它只是 <code>J1900</code> 啊！有了这个比较稳定的虚拟方案后，其实可以将一些 <code>windows</code> 独占的软件放到里面，通过软路由上的 <code>smb</code> 共享文件，但是我现在使用的百度云、迅雷都是使用的 <code>docker</code> + <code>noVNC</code> 方案，暂时没有其余想折腾的东西了。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/" data-id="clogx15kg000a9tt23x3pcbfa" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          C++ 协程踩坑
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Nokia 7P 刷机</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

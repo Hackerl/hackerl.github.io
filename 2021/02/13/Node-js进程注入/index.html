@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>Node.js进程注入 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言上篇文章实现了对Python进程的代码注入，今天接着来尝试Node.js的注入。 Inspector根据Node.js的官方文档得知，在Node.js 8之后加入了新的调试机制(Inspector API)，在启动时加入”–inspect”参数或者向进程发送SIGUSR1信号，就会激活检查器。 12$ node$ kill -USR1 $(pidof node) 激活检查器后，终端会打印信息：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Node.js进程注入">
+<meta property="og:url" content="https://hackerl.github.io/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="前言上篇文章实现了对Python进程的代码注入，今天接着来尝试Node.js的注入。 Inspector根据Node.js的官方文档得知，在Node.js 8之后加入了新的调试机制(Inspector API)，在启动时加入”–inspect”参数或者向进程发送SIGUSR1信号，就会激活检查器。 12$ node$ kill -USR1 $(pidof node) 激活检查器后，终端会打印信息：">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2021-02-13T13:04:58.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.849Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Node-js进程注入" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" class="article-date">
+  <time datetime="2021-02-13T13:04:58.000Z" itemprop="datePublished">2021-02-13</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Node.js进程注入
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>上篇文章实现了对Python进程的代码注入，今天接着来尝试Node.js的注入。</p>
+<h2 id="Inspector"><a href="#Inspector" class="headerlink" title="Inspector"></a>Inspector</h2><p>根据Node.js的<a target="_blank" rel="noopener" href="https://nodejs.org/en/docs/guides/debugging-getting-started/">官方文档</a>得知，在Node.js 8之后加入了新的调试机制(Inspector API)，在启动时加入”–inspect”参数或者向进程发送SIGUSR1信号，就会激活检查器。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> node</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> <span class="built_in">kill</span> -USR1 $(pidof node)</span></span><br></pre></td></tr></table></figure>
+<p>激活检查器后，终端会打印信息：</p>
+<blockquote>
+<p>Debugger listening on ws://127.0.0.1:9229/f1f12ee0-4f35-4e61-836c-71d175a607e3</p>
+</blockquote>
+<p>检查器监听本地端口9929，使用websocket协议，协议约定可见<a target="_blank" rel="noopener" href="https://chromedevtools.github.io/debugger-protocol-viewer/v8/">文档</a>，连接检查器可以使用node自带的inspect client：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> node inspect -p $(pidof node)</span></span><br></pre></td></tr></table></figure>
+<p>连接后可以通过”exec(‘console.log(123)’)”在目标进程中执行node代码，或者执行”repl”开启交互模式。但是自带的inspect client功能简单，如果需要更好的体验，可以使用chrome的调试模块，在chrome中访问”chrome://inspect”即可。</p>
+<h2 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h2><p><a target="_blank" rel="noopener" href="https://github.com/nodejs/node-inspect">node-inspect</a>就是检查器客户端的官方代码仓库，通过阅读<a target="_blank" rel="noopener" href="https://github.com/nodejs/node-inspect/blob/master/lib/internal/inspect_client.js">inspect_client.js</a>发现，交互协议就是简单的json字符串，每个请求和响应通过id字段一一对应。<br>例如请求开启调试时，通过websocket协议发送字符串：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;id&quot;</span>: <span class="number">1</span>,</span><br><span class="line">    <span class="attr">&quot;method&quot;</span>: <span class="string">&quot;Debugger.enable&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>检查器返回响应：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;id&quot;</span>: <span class="number">1</span>,</span><br><span class="line">    <span class="attr">&quot;result&quot;</span>: &#123;</span><br><span class="line">        <span class="attr">&quot;debuggerId&quot;</span>: <span class="string">&quot;(D750AD89818A150E3155AC1D6ECB7BB)&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果你想在目标进程中执行代码，类似于”exec(‘console.log(123)’)”命令，你只需要使用<a target="_blank" rel="noopener" href="https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#method-evaluate">Runtime.evaluate</a>，发送请求：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;id&quot;</span>: <span class="number">2</span>,</span><br><span class="line">    <span class="attr">&quot;method&quot;</span>: <span class="string">&quot;Runtime.evaluate&quot;</span>,</span><br><span class="line">    <span class="attr">&quot;params&quot;</span>: &#123;</span><br><span class="line">        <span class="attr">&quot;expression&quot;</span>: <span class="string">&quot;console.log(123)&quot;</span>,</span><br><span class="line">        <span class="attr">&quot;includeCommandLineAPI&quot;</span>: <span class="literal">true</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>参数需要设置”includeCommandLineAPI”，否则注入的代码无法使用require函数。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" data-id="clogx15kf00069tt22sz1c9cn" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2022/02/28/Elkeid-Golang-RASP/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Elkeid Golang RASP
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2021/02/12/Python%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Python进程注入</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>

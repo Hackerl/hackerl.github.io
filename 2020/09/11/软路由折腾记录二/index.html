@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+
+  
+  <title>软路由折腾记录二 | Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="前言我从大二开始接触linux, 最开始安装的就是基于debian的kali, 之后直接将debian作为主系统日常使用. 包括现在购买的VPS, 又或是wsl都安装的debian, 就如同我对firefox一样, 产生了深厚的感情. 改造接上篇文章, 历经千幸万苦终于可以在OpenWrt上运行Docker后, tproxy透明代理失效了. 因为OpenWrt系统十分精简, 再加上是我自己编译的版">
+<meta property="og:type" content="article">
+<meta property="og:title" content="软路由折腾记录二">
+<meta property="og:url" content="https://hackerl.github.io/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/index.html">
+<meta property="og:site_name" content="Hello World">
+<meta property="og:description" content="前言我从大二开始接触linux, 最开始安装的就是基于debian的kali, 之后直接将debian作为主系统日常使用. 包括现在购买的VPS, 又或是wsl都安装的debian, 就如同我对firefox一样, 产生了深厚的感情. 改造接上篇文章, 历经千幸万苦终于可以在OpenWrt上运行Docker后, tproxy透明代理失效了. 因为OpenWrt系统十分精简, 再加上是我自己编译的版">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.imgur.com/COQcWrd.jpg">
+<meta property="article:published_time" content="2020-09-11T14:54:03.000Z">
+<meta property="article:modified_time" content="2023-11-02T08:13:38.850Z">
+<meta property="article:author" content="hackerl">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/COQcWrd.jpg">
+  
+    <link rel="alternate" href="/atom.xml" title="Hello World" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<meta name="generator" content="Hexo 5.1.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hello World</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://hackerl.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-软路由折腾记录二" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/" class="article-date">
+  <time datetime="2020-09-11T14:54:03.000Z" itemprop="datePublished">2020-09-11</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      软路由折腾记录二
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>我从大二开始接触linux, 最开始安装的就是基于debian的kali, 之后直接将debian作为主系统日常使用. 包括现在购买的VPS, 又或是wsl都安装的debian, 就如同我对firefox一样, 产生了深厚的感情.</p>
+<h2 id="改造"><a href="#改造" class="headerlink" title="改造"></a>改造</h2><p>接上篇文章, 历经千幸万苦终于可以在OpenWrt上运行Docker后, tproxy透明代理失效了. 因为OpenWrt系统十分精简, 再加上是我自己编译的版本, 缺少官方的软件源, 所以调试变得异常困难. 最终我不得不放弃, 转向debian. 我熟练地下载官方镜像, 使用rufus写入U盘, 按部就班的完成了系统安装.<br>那么接下来就需要将它改造成路由器.</p>
+<h3 id="网桥"><a href="#网桥" class="headerlink" title="网桥"></a>网桥</h3><p>我的主机有4个网口, 我将第一个网口当做WAN, 连接着联通光猫. 那么我需要将剩下三个网口进行桥接, 使它们处于一个网段, 当为LAN口使用.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 安装</span></span><br><span class="line">apt install bridge-utils</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 添加桥接网卡</span></span><br><span class="line">brctl addbr br0</span><br><span class="line">brctl addif br0 enp0s8 enp0s9</span><br></pre></td></tr></table></figure>
+<p>你可以选择使用brctl手动添加桥接网卡, 但是重启之后会消失, 所以建议写入网络配置:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># &#x2F;etc&#x2F;network&#x2F;interfaces</span><br><span class="line">auto br0</span><br><span class="line">iface br0 inet static</span><br><span class="line">    address 192.168.12.1</span><br><span class="line">    broadcast 192.168.12.255</span><br><span class="line">    netmask 255.255.255.0</span><br><span class="line">    bridge-ports enp0s8 enp0s9</span><br></pre></td></tr></table></figure>
+<p>bridge-ports参数替换成具体的网卡, 上面的例子只桥接了两个网卡, 这并不是我实际使用的配置, 仅供参考.</p>
+<h3 id="DNS-DHCP"><a href="#DNS-DHCP" class="headerlink" title="DNS/DHCP"></a>DNS/DHCP</h3><p>路由器最重要的自然是DHCP/DNS, 而dnsmasq帮我们轻松搞定:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install dnsmasq</span><br></pre></td></tr></table></figure>
+<p>dnsmasq会提供DHCP/DNS服务, DNS默认转发到上游DNS, 暂时不需要修改, 但是DHCP需要修改配置文件指定网段等信息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># &#x2F;etc&#x2F;dnsmasq.conf</span><br><span class="line">interface&#x3D;br0</span><br><span class="line">dhcp-range&#x3D;192.168.12.100,192.168.12.250,72h</span><br></pre></td></tr></table></figure>
+<h3 id="转发"><a href="#转发" class="headerlink" title="转发"></a>转发</h3><p>现在将电脑网线插入J1900主机网口, 电脑可以使用DHCP获取到IP, 可惜现在还上不了网. 因为linux默认将目标IP不是本机的流量全部DROP, 首先打开IP转发:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 重启后失效</span></span><br><span class="line">echo 1 &gt; /proc/sys/net/ipv4/ip_forward</span><br></pre></td></tr></table></figure>
+<p>光开启转发还是无法上网, 因为内网网段访问外网需要NAT, 所以需要配置iptables:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -A POSTROUTING -s 192.168.12.0/24 -o enp0s3 -j MASQUERADE</span><br></pre></td></tr></table></figure>
+<p>enp0s3是WAN口网卡, MASQUERADE将把子网流量自动NAT转换, 现在你可以自由的进行网上冲浪了.</p>
+<h2 id="复现"><a href="#复现" class="headerlink" title="复现"></a>复现</h2><p>完成上面一切, debian现在与OpenWrt有着同样的功能, 而且还废弃了那些累赘的组件. 我现在准备安装docker-ce, 过程很迅速, 安装完后我开始基于docker-ce搭建自己的SMB服务.<br>一切都完成了, 我长舒一口气, 我在终端执行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig google.com @8.8.8.8</span><br></pre></td></tr></table></figure>
+<p>命令卡住了!!! tproxy又罢工了!!! 我突然意识到我错怪了OpenWrt, 这似乎是Docker惹的祸, 于是我又开始了漫长的debug.</p>
+<h2 id="调试"><a href="#调试" class="headerlink" title="调试"></a>调试</h2><h3 id="网络架构"><a href="#网络架构" class="headerlink" title="网络架构"></a>网络架构</h3><p><img src="https://i.imgur.com/COQcWrd.jpg"><br>这张图显示的是linux的网络架构, 包括iptables的链条顺序、路由选择, 下面所有的调试都是基于这张图.</p>
+<h3 id="Docker"><a href="#Docker" class="headerlink" title="Docker"></a>Docker</h3><p>我知道Docker的网络建立在iptables上, 它一样使用虚拟桥接网卡连接各个容器, 然后在iptables添加规则进行NAT. 可是没理由它会影响到主机的网络, 我一条一条地查看Docker添加的防火墙规则, 唯一异常的点是它将filter表的FORWARD默认策略改成了DROP. 但tproxy压根不会经过FORWARD, 路由规则会让流量进入本地协议栈.<br>根据架构图可以知道, 如果包进入了filter表的INPUT链, 那么说明流量已经过了路由选择, 即将进入本地协议栈. 如果tproxy正常工作, 修改了包的结构体, 那么此时代理端口与包是相关联的, 所以包会被正常接收.<br>我开始猜测tproxy没有正常运作, 导致路由失败, 包被FORWARD出去了:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT filter INPUT**&#x27;</span><br></pre></td></tr></table></figure>
+<p>我添加了一条iptables规则, 当匹配到包时会打印出日志, 于是我重复了一次DNS查询操作. 日志出现了, 所以我断定它已经走过了路由选择. 我又接着猜测了几种可能:</p>
+<ul>
+<li>tproxy关联包信息失败</li>
+<li>IP_TRANSPARENT属性失效</li>
+</ul>
+<p>这两种情况我都没有有效的测试手段, 所以我陷入了困境, 不过我觉得原因大概率是docker-ce加载了某个内核模块. 于是我使用dpkg查看所有安装的包, 只发现了一个aufs.ko, 貌似不是很符合.<br>当我束手无策时, 我发现了这篇帖子<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/57710177/tproxy-compatibility-with-docker">TPROXY compatibility with Docker</a>.<br>作者遇到了和我一样的问题, 于是它使用strace跟踪dockerd的系统调用, 发现它加载了一个内核模块”br_netfilter”. 我不抱任何希望的执行了”rmmod br_netfilter”, 它恢复了!!! 原来是这个br_netfilter的问题!!!</p>
+<h3 id="ebtables"><a href="#ebtables" class="headerlink" title="ebtables"></a>ebtables</h3><p>这时我才仔细去观察上面的架构图, 我发现我遗漏了一个问题, 就是网桥的流量会走Link Layer, 所以可能是这部分出了问题. 图中的蓝色表代表的是ebtables, 绿色表代表iptables, ebtables可以理解成链路的iptables.<br>我想弄清楚流量的具体走向, 所以我在每个点都加上log规则, 数据包的流向将一览无遗:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> raw</span></span><br><span class="line">iptables -t raw -I PREROUTING 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT raw PREROUTING**&#x27;</span><br><span class="line">iptables -t raw -I OUTPUT 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT raw OUTPUT**&#x27;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> mangle</span></span><br><span class="line">iptables -t mangle -I PREROUTING 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT mangle PREROUTING**&#x27;</span><br><span class="line">iptables -t mangle -I INPUT 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT mangle INPUT**&#x27;</span><br><span class="line">iptables -t mangle -I FORWARD 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT mangle FORWARD**&#x27;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> nat</span></span><br><span class="line">iptables -t nat -I PREROUTING 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT nat PREROUTING**&#x27;</span><br><span class="line">iptables -t nat -I INPUT 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT nat INPUT**&#x27;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> filter</span></span><br><span class="line">iptables -t filter -I INPUT 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT filter INPUT**&#x27;</span><br><span class="line">iptables -t filter -I FORWARD 1 -p udp -j LOG --log-prefix &#x27;** SUSPECT filter FORWARD**&#x27;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> BROUTING</span></span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:broute:BROUTING&quot; -j CONTINUE</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> nat</span></span><br><span class="line">ebtables-legacy -t nat -A OUTPUT -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:nat:OUTPUT&quot;  -j CONTINUE</span><br><span class="line">ebtables-legacy -t nat -A PREROUTING -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:nat:PREROUTING&quot; -j CONTINUE</span><br><span class="line">ebtables-legacy -t nat -A POSTROUTING -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:nat:POSTROUTING&quot; -j CONTINUE</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> filter</span></span><br><span class="line">ebtables-legacy -t filter -A INPUT -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:filter:INPUT&quot; -j CONTINUE</span><br><span class="line">ebtables-legacy -t filter -A FORWARD -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:filter:FORWARD&quot; -j CONTINUE</span><br><span class="line">ebtables-legacy -t filter -A OUTPUT -p ipv4 --ip-proto udp --log-level 6 --log-ip --log-prefix &quot;TRACE: eb:filter:OUTPUT&quot; -j CONTINUE</span><br></pre></td></tr></table></figure>
+<p>在未加载br_netfilter的情况下, 我向8.8.8.8查询域名:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">TRACE: eb:broute:BROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36289 DPT&#x3D;53</span><br><span class="line">TRACE: eb:nat:PREROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36289 DPT&#x3D;53</span><br><span class="line">TRACE: eb:filter:INPUT IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36289 DPT&#x3D;53</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT nat PREROUTING**IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT nat INPUT**IN&#x3D;br0 OUT&#x3D; MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;24626 PROTO&#x3D;UDP SPT&#x3D;36289 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;enp0s3 SRC&#x3D;10.0.2.15 DST&#x3D;10.91.0.1 LEN&#x3D;57 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;56764 DF PROTO&#x3D;UDP SPT&#x3D;45711 DPT&#x3D;53 LEN&#x3D;37</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;enp0s3 SRC&#x3D;10.0.2.15 DST&#x3D;10.91.0.1 LEN&#x3D;57 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;56765 DF PROTO&#x3D;UDP SPT&#x3D;59060 DPT&#x3D;53 LEN&#x3D;37</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1722 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;45711 LEN&#x3D;94</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1722 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;45711 LEN&#x3D;94</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1722 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;45711 LEN&#x3D;94</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1722 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;45711 LEN&#x3D;94</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1723 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;59060 LEN&#x3D;53</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1723 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;59060 LEN&#x3D;53</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1723 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;59060 LEN&#x3D;53</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;1723 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;59060 LEN&#x3D;53</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;br0 SRC&#x3D;8.8.8.8 DST&#x3D;192.168.12.192 LEN&#x3D;98 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;40027 DF PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;36289 LEN&#x3D;78</span><br><span class="line">TRACE: eb:nat:OUTPUT IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;36289</span><br><span class="line">TRACE: eb:filter:OUTPUT IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;36289</span><br><span class="line">TRACE: eb:nat:POSTROUTING IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;36289</span><br></pre></td></tr></table></figure>
+<p>可以看到包先过了ebtables规则, 然后转入了iptables规则, 也就是包按层级从下到上. 此时的tproxy是正常工作的, 可能你会感到疑惑, 为什么本机向10.91.0.1发送了UDP. 其实是因为我使用了VPN, 所以这是在解析VPN服务器的域名, UDP的转发走的是VPN的TCP通道.<br>接着我加载了br_netfilter, 观察日志:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">TRACE: eb:broute:BROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36003 DPT&#x3D;53</span><br><span class="line">TRACE: eb:nat:PREROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36003 DPT&#x3D;53</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT nat PREROUTING**IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">TRACE: eb:filter:INPUT IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;36003 DPT&#x3D;53</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT nat INPUT**IN&#x3D;br0 OUT&#x3D; PHYSIN&#x3D;enp0s8 MAC&#x3D;08:00:27:9b:fa:c9:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;35740 PROTO&#x3D;UDP SPT&#x3D;36003 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br></pre></td></tr></table></figure>
+<p>这是什么情况??? 数据包在两个层级之间跳来跳去??? 我开始搜索相关资料, 原来这是br_netfilter提供的透明防火墙功能, 使得三层规则可以作用在二层上. 因为桥接的端口之间发送包是被网桥直接转走的, 不会走到本机的iptables中, 而br_netfilter使得ebtables主动调用iptables规则, 这样所有的包都能接受过滤.<br>谜底揭开了, 我看到的日志显示包已经到了filter表的INPUT, 可实际上它还没有过IP层路由选择, 它此时在二层ebtables的filter表中, 只不过它主动的调用了iptables. 也就是说这个包没有通过路由进入本地协议栈, 它被丢弃或者转走了. 大概是因为iptables打上的fwmark, 在ebtables中丢失了, 导致进行路由选择时无法命中我们添加的路由规则.<br>于是我看阅读ebtables的文档, 文档中说道, 在broute表中将流量DROP, 会使得包进入Network Layer处理, 这样就是图中broute有个箭头指到上层的含义.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ebtables-legacy -t broute -A BROUTING -i enp0s8 -p ipv4 --ip-proto udp -j redirect --redirect-target DROP</span><br></pre></td></tr></table></figure>
+<p>我执行上面的命令后, 再执行查询操作:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">TRACE: eb:broute:BROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;8.8.8.8, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;47382 DPT&#x3D;53</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT nat PREROUTING**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT nat INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;8.8.8.8 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;25647 PROTO&#x3D;UDP SPT&#x3D;47382 DPT&#x3D;53 LEN&#x3D;46 MARK&#x3D;0x162</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;enp0s3 SRC&#x3D;10.0.2.15 DST&#x3D;10.91.0.1 LEN&#x3D;57 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;40282 DF PROTO&#x3D;UDP SPT&#x3D;54985 DPT&#x3D;53 LEN&#x3D;37</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;enp0s3 SRC&#x3D;10.0.2.15 DST&#x3D;10.91.0.1 LEN&#x3D;57 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;40283 DF PROTO&#x3D;UDP SPT&#x3D;37997 DPT&#x3D;53 LEN&#x3D;37</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4012 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;37997 LEN&#x3D;53</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4012 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;37997 LEN&#x3D;53</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4012 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;37997 LEN&#x3D;53</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;73 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4012 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;37997 LEN&#x3D;53</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4018 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;54985 LEN&#x3D;94</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4018 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;54985 LEN&#x3D;94</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4018 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;54985 LEN&#x3D;94</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s3 OUT&#x3D; MAC&#x3D;08:00:27:4f:1e:2b:52:54:00:12:35:02:08:00 SRC&#x3D;10.91.0.1 DST&#x3D;10.0.2.15 LEN&#x3D;114 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;4018 PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;54985 LEN&#x3D;94</span><br><span class="line">** SUSPECT raw OUTPUT**IN&#x3D; OUT&#x3D;br0 SRC&#x3D;8.8.8.8 DST&#x3D;192.168.12.192 LEN&#x3D;98 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;26403 DF PROTO&#x3D;UDP SPT&#x3D;53 DPT&#x3D;47382 LEN&#x3D;78</span><br><span class="line">TRACE: eb:nat:OUTPUT IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;47382</span><br><span class="line">TRACE: eb:filter:OUTPUT IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;47382</span><br><span class="line">TRACE: eb:nat:POSTROUTING IN&#x3D; OUT&#x3D;enp0s8 MAC source &#x3D; 08:00:27:9b:fa:c9 MAC dest &#x3D; 08:00:27:6d:c8:0b proto &#x3D; 0x0800 IP SRC&#x3D;8.8.8.8 IP DST&#x3D;192.168.12.192, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;53 DPT&#x3D;47382</span><br></pre></td></tr></table></figure>
+<p>可以看到包的确被重定向到了Network Layer, tproxy也正常工作了.</p>
+<h2 id="尾声"><a href="#尾声" class="headerlink" title="尾声"></a>尾声</h2><p>正当我以为一切都结束了的时候, 我打开了斗鱼直播, 可浏览器却显示网络异常, 我又上不了网了. 我在终端进行ping测试, IP可以ping通而域名不行, 这样看来是DNS的问题.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig baidu.com @192.168.12.1</span><br></pre></td></tr></table></figure>
+<p>命令卡住了, 难道发往本地的包重定向到Network Layer就被拒收了? 我又开始观察ebtables/iptables的日志输出:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">TRACE: eb:broute:BROUTING IN&#x3D;enp0s8 OUT&#x3D; MAC source &#x3D; 08:00:27:6d:c8:0b MAC dest &#x3D; 08:00:27:9b:fa:c9 proto &#x3D; 0x0800 IP SRC&#x3D;192.168.12.192 IP DST&#x3D;192.168.12.1, IP tos&#x3D;0x00, IP proto&#x3D;17 SPT&#x3D;34741 DPT&#x3D;53</span><br><span class="line">** SUSPECT raw PREROUTING**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT mangle PREROUTING*IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT nat PREROUTING**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT mangle INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT filter INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br><span class="line">** SUSPECT nat INPUT**IN&#x3D;enp0s8 OUT&#x3D; MAC&#x3D;08:00:27:ae:7d:59:08:00:27:6d:c8:0b:08:00 SRC&#x3D;192.168.12.192 DST&#x3D;192.168.12.1 LEN&#x3D;66 TOS&#x3D;0x00 PREC&#x3D;0x00 TTL&#x3D;64 ID&#x3D;7347 PROTO&#x3D;UDP SPT&#x3D;34741 DPT&#x3D;53 LEN&#x3D;46</span><br></pre></td></tr></table></figure>
+<p>数据包已经进入了INPUT, 这次的确是进入了本地协议栈, 但是需要注意数据包的IN网卡已经从桥接网卡bro变成了真实网卡端口enp0s8. 难道是因为这个改变, 而被协议栈拒收? 还是因为dnsmasq没有bind该网卡?<br>我手动使用nc进行测试:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nc -u -lp 3000</span><br></pre></td></tr></table></figure>
+<p>使用nc监听软路由上3000端口, 然后在电脑上执行:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dig baidu.com @192.168.12.1 -p 3000</span><br></pre></td></tr></table></figure>
+<p>如果数据能被接收, nc会打印出DNS查询报文, 结果令我诧异, nc打印出了报文内容. 那么看来即使IN interface被修改, 数据包依旧能够被正确接收.<br>最后我使用strace追踪dnsmasq的系统调用:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strace /sbin/dnsmasq</span><br></pre></td></tr></table></figure>
+<p>执行查询后, 我发现dnsmasq接收到了报文, 只是它似乎获取了网卡名称bro与enp0s8, 应该是它进行了网卡校验, 认为请求不应该由enp0s8流入, 所以没有进行回应.</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>为了不影响Docker的正常使用, 我没有将所有Link Layer流量进行重定向, 放行了一些常见内网IP网段.<br>所以我最后的ebtables/iptables配置如下:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> tcp</span></span><br><span class="line">iptables -t nat -N CLASH</span><br><span class="line">iptables -t nat -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t nat -A CLASH -p tcp -j REDIRECT --to-ports 7892</span><br><span class="line">iptables -t nat -A PREROUTING -p tcp -j CLASH</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> udp</span></span><br><span class="line">ip rule add fwmark 0x162 table 0x162</span><br><span class="line">ip route add local 0.0.0.0/0 dev lo table 0x162</span><br><span class="line">iptables -t mangle -N CLASH</span><br><span class="line">iptables -t mangle -A CLASH -d 127.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 10.0.0.0/8 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 169.254.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 192.168.0.0/16 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 224.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 240.0.0.0/4 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 172.16.0.0/12 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -d 255.255.255.255 -j RETURN</span><br><span class="line">iptables -t mangle -A CLASH -p udp -j TPROXY --on-port 7892 --tproxy-mark 0x162</span><br><span class="line">iptables -t mangle -A PREROUTING -p udp -j CLASH</span><br><span class="line"></span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 127.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 10.0.0.0/8 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 169.254.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 192.168.0.0/16 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 224.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 240.0.0.0/4 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 172.16.0.0/12 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp --ip-destination 255.255.255.255 -j ACCEPT</span><br><span class="line">ebtables-legacy -t broute -A BROUTING -p ipv4 --ip-proto udp -j redirect --redirect-target DROP</span><br></pre></td></tr></table></figure>
+<p>有一点需要注意, ebtables规则不需要”-i name”指定网卡名称, 因为理论上docker容器与个人电脑(连接软路由LAN口)处于同一网络层面. 不管是LAN口网桥还是docker网桥, 都需要适配该规则, 否则UDP透明代理将失败.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://hackerl.github.io/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%BA%8C/" data-id="clogx15kg000e9tt268ok64sv" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/09/21/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%89/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          软路由折腾记录三
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/09/11/%E8%BD%AF%E8%B7%AF%E7%94%B1%E6%8A%98%E8%85%BE%E8%AE%B0%E5%BD%95%E4%B8%80/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">软路由折腾记录一</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/11/">November 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/10/">October 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2022/02/">February 2022</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">September 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/11/02/CPP-%E5%8D%8F%E7%A8%8B%E8%B8%A9%E5%9D%91/">C++ 协程踩坑</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/24/%E6%88%91%E7%9A%84%E5%AE%B6%E5%BA%AD%E7%BD%91%E7%BB%9C%E6%9E%B6%E6%9E%84/">我的家庭网络架构</a>
+          </li>
+        
+          <li>
+            <a href="/2022/10/21/Nokia-7P-%E5%88%B7%E6%9C%BA/">Nokia 7P 刷机</a>
+          </li>
+        
+          <li>
+            <a href="/2022/02/28/Elkeid-Golang-RASP/">Elkeid Golang RASP</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/13/Node-js%E8%BF%9B%E7%A8%8B%E6%B3%A8%E5%85%A5/">Node.js进程注入</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2023 hackerl<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+  </div>
+</body>
+</html>
